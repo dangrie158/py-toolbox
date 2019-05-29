@@ -23,9 +23,7 @@ class Tee:
         >>> combined = Tee(file_like, sys.stdout)
         >>> combined.write('This is printed into a file and on stdout\\n')
         This is printed into a file and on stdout
-        >>> file_like.seek(0)
-        0
-        >>> assert file_like.read() == 'This is printed into a file and on stdout\\n'
+        >>> assert file_like.getvalue() == 'This is printed into a file and on stdout\\n'
     """
 
     def __init__(self, *args):
@@ -73,7 +71,7 @@ class Tee:
 
 
 @contextmanager
-def permissive_open(file, *args):
+def _permissive_open(file, *args):
     """
     Contextmanager that acts like a call to ``open()``  but accepts also 
     a already opened File object. If passed a string, the file is opened
@@ -85,7 +83,7 @@ def permissive_open(file, *args):
 
         >>> import io, tempfile
         >>> outfile = io.StringIO()
-        >>> with permissive_open(outfile) as file:
+        >>> with _permissive_open(outfile) as file:
         ...     print(file.closed)
         False
         >>> file.closed
@@ -94,7 +92,7 @@ def permissive_open(file, *args):
     .. doctest:: 
 
         >>> outfile = tempfile.NamedTemporaryFile('w')
-        >>> with permissive_open(outfile.name, 'w+') as file:
+        >>> with _permissive_open(outfile.name, 'w+') as file:
         ...     print(file.closed)
         False
         >>> file.closed
@@ -116,7 +114,7 @@ def permissive_open(file, *args):
 
 @contextmanager
 def _redirect_stream(file, module, attr):
-    with permissive_open(file, "w") as out:
+    with _permissive_open(file, "w") as out:
         old = getattr(module, attr)
         setattr(module, attr, out)
         sys.stdout = out
@@ -142,9 +140,7 @@ def redirected_stdout(file):
         >>> outfile = io.StringIO()
         >>> with redirected_stdout(outfile):
         ...     print('this is written to outfile')
-        >>> outfile.seek(0)
-        0
-        >>> assert outfile.read() == 'this is written to outfile\\n'
+        >>> assert outfile.getvalue() == 'this is written to outfile\\n'
     """
     with _redirect_stream(file, sys, "stdout") as redirected:
         yield redirected
@@ -193,11 +189,9 @@ def mirrored_stdout(file):
         >>> with mirrored_stdout(outfile):
         ...     print('this is written to outfile and stdout')
         this is written to outfile and stdout
-        >>> outfile.seek(0)
-        0
-        >>> assert outfile.read() == 'this is written to outfile and stdout\\n'
+        >>> assert outfile.getvalue() == 'this is written to outfile and stdout\\n'
     """
-    with permissive_open(file, "w") as out:
+    with _permissive_open(file, "w") as out:
         tee_piece = Tee(sys.stdout, out)
         with redirected_stdout(tee_piece) as out:
             yield out
@@ -210,7 +204,7 @@ def mirrored_stdstreams(file):
 
     see :meth:`mirrored_stdout`
     """
-    with permissive_open(file, "w") as out:
+    with _permissive_open(file, "w") as out:
         tee_piece_out = Tee(sys.stdout, out)
         with redirected_stdout(tee_piece_out):
             tee_piece_err = Tee(sys.stderr, out)
