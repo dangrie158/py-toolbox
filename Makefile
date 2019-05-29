@@ -4,6 +4,7 @@ MODULE_NAME = pytb
 AUTHOR = "Daniel Grießhaber"
 DOCS_DIR = docs
 
+$(DOCS_DIR)/%.rst: $(MODULE_NAME)/%.py
 
 $(DOCS_DIR)/_build/html/%.html: $(DOCS_DIR)/%.rst
 	sphinx-apidoc -Fa -A $(AUTHOR) -o $(DOCS_DIR) $(MODULE_NAME)
