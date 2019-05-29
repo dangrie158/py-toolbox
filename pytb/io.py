@@ -5,6 +5,7 @@ from contextlib import contextmanager
     This module contains a set of helpers for common Input/Output related tasks
 """
 
+
 class Tee:
     """
     A N-ended T-piece (manifold) for File objects that supports writing.
@@ -114,6 +115,18 @@ def permissive_open(file, *args):
 
 
 @contextmanager
+def _redirect_stream(file, module, attr):
+    with permissive_open(file, "w") as out:
+        old = getattr(module, attr)
+        setattr(module, attr, out)
+        sys.stdout = out
+        try:
+            yield out
+        finally:
+            setattr(module, attr, old)
+
+
+@contextmanager
 def redirected_stdout(file):
     """
     ContextManager that redirects stdout to a given file-like object 
@@ -133,13 +146,31 @@ def redirected_stdout(file):
         0
         >>> assert outfile.read() == 'this is written to outfile\\n'
     """
-    with permissive_open(file, "w") as out:
-        old = sys.stdout
-        sys.stdout = out
-        try:
-            yield out
-        finally:
-            sys.stdout = old
+    with _redirect_stream(file, sys, "stdout") as redirected:
+        yield redirected
+
+
+@contextmanager
+def redirected_stderr(file):
+    """
+    Same functionality as ``redirect_stdout`` but redirects the stderr stram instead
+
+    see :meth:`redirected_stdout`
+    """
+    with _redirect_stream(file, sys, "stderr") as redirected:
+        yield redirected
+
+
+@contextmanager
+def redirected_stdstreams(file):
+    """
+    redirects both output streams (``stderr`` and ``stdout``) to ``file``
+
+    see :meth:`redirected_stdout`
+    """
+    with _redirect_stream(file, sys, "stdout") as redirected_stdout:
+        with _redirect_stream(redirected_stdout, sys, "stderr") as redirected_stderr:
+            yield redirected_stderr
 
 
 @contextmanager
@@ -170,3 +201,18 @@ def mirrored_stdout(file):
         tee_piece = Tee(sys.stdout, out)
         with redirected_stdout(tee_piece) as out:
             yield out
+
+
+@contextmanager
+def mirrored_stdstreams(file):
+    """
+    Version of :meth:`mirrored_stdout` but mirrors ``stderr`` and ``stdout`` to file
+
+    see :meth:`mirrored_stdout`
+    """
+    with permissive_open(file, "w") as out:
+        tee_piece_out = Tee(sys.stdout, out)
+        with redirected_stdout(tee_piece_out):
+            tee_piece_err = Tee(sys.stderr, out)
+            with redirected_stderr(tee_piece_err):
+                yield out

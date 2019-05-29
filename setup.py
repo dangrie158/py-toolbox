@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='py-toolbox',
-    version='0.1.0',
+    version='0.1.2',
     author='Daniel Grießhaber',
     author_email='dangrie158@gmail.com',
     url='https://github.com/dangrie158/py-toolbox',
