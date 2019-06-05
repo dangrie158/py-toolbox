@@ -6,3 +6,5 @@ docs/_build/**
 dist/**
 MANIFEST
 build/**
+*.egg-info
+*.pyc
