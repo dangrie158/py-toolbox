@@ -17,7 +17,8 @@ test:
 	$(PYTHON) -m unittest pytb/test/test_*.py
 
 clean:
-	rm -r $(DOCS_DIR)/_build
+	-rm $(DOCS_DIR)/pytb.rst
+	-rm -r $(DOCS_DIR)/_build
 	$(PYTHON) setup.py clean
 
 install:
