@@ -18,8 +18,8 @@ sys.path.insert(0, '/Users/daniel/Documents/pytb')
 # -- Project information -----------------------------------------------------
 
 project = 'pytb'
-copyright = '2019, Daniel Grießhaber'
-author = 'Daniel Grießhaber'
+copyright = u'2019, Daniel Grießhaber'
+author = u'Daniel Grießhaber'
 
 
 # -- General configuration ---------------------------------------------------
