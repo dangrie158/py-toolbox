@@ -16,8 +16,11 @@ or via distutils::
     cd pytb
     python setup.py install
 
-Redirecting output streams
---------------------------
+Usage examples
+--------------
+
+**Redirecting output streams**
+
 The ``io`` Module offers function to temporarly redirect or mirror ``stdout`` and ``stderr`` streams to a file
 
 Stream redirection:
@@ -26,14 +29,13 @@ Stream redirection:
 >>> with redirected_stdout('stdout.txt'):
 ...     print('this string will be written to stdout.txt and not to the console') 
 
-Stream mirroring:
+**Stream mirroring**
 
 >>> from pytb.io import mirrored_stdstreams
 >>> with mirrored_stdstreams('alloutput.txt'):
 ...     print('this string will be written to alloutput.txt AND to the console') 
 
-Importing Jupyter-Notebooks as python modules
----------------------------------------------
+**Importing Jupyter-Notebooks as python modules**
 
 >>> from pytb.importlib import no_module_cache, NotebookLoader
 >>> NotebookLoader().install()
@@ -46,8 +48,8 @@ NotebookLoaders can also be used as ContextManagers to only temporarly affect mo
 ...     import my.Notebook # will load the notebook
 >>> import my.Notebook # will fail if there is no package named 'my'
 
-Automatically reload modules and packages when importing
---------------------------------------------------------
+**Automatically reload modules and packages when importing**
+
 Use a ``NoModuleCacheContext`` to force reloading of modules that are imported. An instance of the ContextManager is available as ``pytb.importlib.no_module_cache``
 
 >>> from pytb.importlib import no_module_cache, NotebookLoader
