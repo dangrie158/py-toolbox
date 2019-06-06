@@ -6,18 +6,22 @@ from importlib.abc import MetaPathFinder, Loader
 from importlib.machinery import ModuleSpec
 import importlib
 import builtins
+from contextlib import suppress
 
-try:
+with suppress(Exception):
     from nbformat import read as read_notebook
-except:
-    pass
+
+
+with suppress(Exception):
+    from IPython import get_ipython
+    from IPython.core.interactiveshell import InteractiveShell
 
 """
 This module contains useful helper scripts regarding the loading of modules
 """
 
 
-class ModuleLoader(AbstractContextManager, MetaPathFinder, Loader):
+class ModuleLoader(AbstractContextManager):
     """
     A abstract base class for a general module loader interface 
     that can be dynamically installed and uninstalled from the ``sys.meta_path``
@@ -274,6 +278,12 @@ class NotebookLoader(ModuleLoader):
 
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.shell = (
+            InteractiveShell.instance() if "InteractiveShell" in globals() else None
+        )
+
     def _find_notebook(self, fullname, path):
         name = fullname.rsplit(".", 1)[-1]
         if not path:
@@ -303,14 +313,32 @@ class NotebookLoader(ModuleLoader):
     def exec_module(self, module):
         super().exec_module(module)
 
+        module.__dict__["get_ipython"] = get_ipython
+
         with io.open(module.__spec__.origin, "r", encoding="utf-8") as f:
             notebook = read_notebook(f, 4)
 
-        for cell in notebook.cells:
-            if cell.cell_type == "code":
-                code = cell.source
-                # run the code in them odule
-                exec(code, module.__dict__)
+        if self.shell is not None:
+            # extra work to ensure that magics that would affect the user_ns
+            # actually affect the notebook module's namespace
+            save_user_ns = self.shell.user_ns
+            self.shell.user_ns = module.__dict__
+
+        try:
+            for cell in notebook.cells:
+                if cell.cell_type == "code":
+                    if self.shell is not None:
+                        code = self.shell.input_transformer_manager.transform_cell(
+                            cell.source
+                        )
+                    else:
+                        code = cell.source
+
+                    # run the code in them odule
+                    exec(code, module.__dict__)
+        finally:
+            if self.shell is not None:
+                self.shell.user_ns = save_user_ns
 
         return module
 
