@@ -165,14 +165,17 @@ class NoModuleCacheContext(AbstractContextManager):
         "importlib",
         "pkg_resources",
         "jsonschema",
+        "numpy",
+        "IPython"
     )
 
     class CachlessImporter:
-        def __init__(self, import_fun, verbose=False):
+        def __init__(self, import_fun, verbose, max_depth):
             self.import_fun = import_fun
             self.module_stack = []
             self.reloaded_modules_in_last_call = []
             self.is_verbose = verbose
+            self.max_depth = max_depth
 
         def __call__(self, name, globals=None, locals=None, fromlist=(), level=0):
             if level > 0:
@@ -194,14 +197,16 @@ class NoModuleCacheContext(AbstractContextManager):
                 fullname not in self.reloaded_modules_in_last_call
                 and module_name not in NoModuleCacheContext._no_reloadable_packages
             ):
+                # reload the module itself first, as the children
+                # in fromlist may need it already in sys.modules
+                self.maybe_reload_module(fullname)
                 if fromlist:
                     # reload all children from the partslist
                     for part in fromlist:
                         el_name = ".".join((fullname, part))
                         self.maybe_reload_module(el_name)
-                self.maybe_reload_module(fullname)
 
-            # add the module name to the current call stack before calling the 
+            # add the module name to the current call stack before calling the
             # original builtin as importing a module may itself import modules and
             # thus call this function
             self.module_stack.append(fullname)
@@ -221,7 +226,9 @@ class NoModuleCacheContext(AbstractContextManager):
 
             :param fullname: FQN of the module to reload
             """
-            if fullname in sys.modules:
+            if fullname in sys.modules and (
+                self.max_depth is None or len(self.module_stack) < self.max_depth
+            ):
                 self.reloaded_modules_in_last_call.append(fullname)
                 importlib.reload(sys.modules[fullname])
 
@@ -234,16 +241,17 @@ class NoModuleCacheContext(AbstractContextManager):
                 print(f"reloaded modules {self.reloaded_modules_in_last_call}")
             self.reloaded_modules_in_last_call.clear()
 
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, max_depth=None):
         self.is_verbose = verbose
         self._next_context_is_verbose = False
+        self.max_depth = max_depth
 
     def __enter__(self):
         verbosity = self._next_context_is_verbose or self.is_verbose
         self._next_context_is_verbose = False
         self.original_import_fun = builtins.__import__
         self.custom_import_fun = self.CachlessImporter(
-            self.original_import_fun, verbosity
+            self.original_import_fun, verbosity, self.max_depth
         )
         builtins.__import__ = self.custom_import_fun
 
