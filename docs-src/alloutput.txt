@@ -1,0 +1,1 @@
+this string will be written to alloutput.txt AND to the console

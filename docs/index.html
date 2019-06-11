@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>PyTb (Python Toolbox) &mdash; pytb  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="pytb package" href="pytb.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#" class="icon icon-home"> pytb
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pytb.html">pytb package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">pytb</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>PyTb (Python Toolbox)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="pytb-python-toolbox">
+<h1>PyTb (Python Toolbox)<a class="headerlink" href="#pytb-python-toolbox" title="Permalink to this headline">¶</a></h1>
+<p>This is a collection of useful snippets I regularly find myself to use during prototyping.</p>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>via pip:</p>
+<p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">py-toolbox</span></code></p>
+<p>or via distutils:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">dangrie158</span><span class="o">/</span><span class="n">py</span><span class="o">-</span><span class="n">toolbox</span><span class="o">.</span><span class="n">git</span> <span class="n">pytb</span>
+<span class="n">cd</span> <span class="n">pytb</span>
+<span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="usage-examples">
+<h2>Usage examples<a class="headerlink" href="#usage-examples" title="Permalink to this headline">¶</a></h2>
+<p><strong>Redirecting output streams</strong></p>
+<p>The <code class="docutils literal notranslate"><span class="pre">io</span></code> Module offers function to temporarly redirect or mirror <code class="docutils literal notranslate"><span class="pre">stdout</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> streams to a file</p>
+<p>Stream redirection:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pytb.io</span> <span class="k">import</span> <span class="n">redirected_stdout</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">redirected_stdout</span><span class="p">(</span><span class="s1">&#39;stdout.txt&#39;</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;this string will be written to stdout.txt and not to the console&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Stream mirroring</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pytb.io</span> <span class="k">import</span> <span class="n">mirrored_stdstreams</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="s1">&#39;alloutput.txt&#39;</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;this string will be written to alloutput.txt AND to the console&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Importing Jupyter-Notebooks as python modules</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pytb.importlib</span> <span class="k">import</span> <span class="n">no_module_cache</span><span class="p">,</span> <span class="n">NotebookLoader</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loader</span> <span class="o">=</span> <span class="n">NotebookLoader</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loader</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pytb.test.fixtures.Notebook</span> <span class="c1"># will try to import the Notebook in &#39;./my/Notebook.ipynb&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loader</span><span class="o">.</span><span class="n">uninstall</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>NotebookLoaders can also be used as ContextManagers to only temporarly affect module loading and automatically remove the loader hook when exiting the context.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pytb.importlib</span> <span class="k">import</span> <span class="n">no_module_cache</span><span class="p">,</span> <span class="n">NotebookLoader</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">NotebookLoader</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="kn">import</span> <span class="nn">pytb.test.fixtures.Notebook</span> <span class="c1"># will load the notebook</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pytb.test.fixtures.Notebook</span> <span class="c1"># will fail if there is no package named &#39;my&#39;</span>
+</pre></div>
+</div>
+<p><strong>Automatically reload modules and packages when importing</strong></p>
+<p>Use a <code class="docutils literal notranslate"><span class="pre">NoModuleCacheContext</span></code> to force reloading of modules that are imported. An instance of the ContextManager is available as <code class="docutils literal notranslate"><span class="pre">pytb.importlib.no_module_cache</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pytb.importlib</span> <span class="k">import</span> <span class="n">no_module_cache</span><span class="p">,</span> <span class="n">NotebookLoader</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">loader</span> <span class="o">=</span> <span class="n">NotebookLoader</span><span class="p">()</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pytb.test.fixtures.Notebook</span> <span class="c1"># load the module if it was not previously loaded</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">no_module_cache</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="kn">import</span> <span class="nn">pytb.test.fixtures.Notebook</span> <span class="c1"># force reevaluation of the module (will execute all code again)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="development">
+<h2>Development<a class="headerlink" href="#development" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pytb.html">pytb package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pytb.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytb.html#module-pytb.config">pytb.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytb.html#module-pytb.importlib">pytb.importlib module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytb.html#module-pytb.io">pytb.io module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pytb.html#module-pytb.rdb">pytb.rdb module</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="pytb.html" class="btn btn-neutral float-right" title="pytb package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Grießhaber
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

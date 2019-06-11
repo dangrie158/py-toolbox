@@ -1,0 +1,400 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pytb.io &mdash; pytb  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> pytb
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../pytb.html">pytb package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytb</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>pytb.io</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pytb.io</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This module contains a set of helpers for common Input/Output related tasks</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Tee"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee">[docs]</a><span class="k">class</span> <span class="nc">Tee</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A N-ended T-piece (manifold) for File objects that supports writing.</span>
+<span class="sd">    This is useful if you want to write to multiple files or file-like objects </span>
+<span class="sd">    (e.g. ``sys.stdout``, ``sys.stderr``) simultaneously.</span>
+<span class="sd">    </span>
+<span class="sd">    .. testsetup:: *</span>
+
+<span class="sd">        from pytb.io import *</span>
+
+<span class="sd">    .. doctest::</span>
+
+<span class="sd">        &gt;&gt;&gt; import sys, io</span>
+<span class="sd">        &gt;&gt;&gt; file_like = io.StringIO()</span>
+<span class="sd">        &gt;&gt;&gt; combined = Tee(file_like, sys.stdout)</span>
+<span class="sd">        &gt;&gt;&gt; combined.write(&#39;This is printed into a file and on stdout\\n&#39;)</span>
+<span class="sd">        This is printed into a file and on stdout</span>
+<span class="sd">        &gt;&gt;&gt; assert file_like.getvalue() == &#39;This is printed into a file and on stdout\\n&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiate a new manifold that connects all passed file-like objects&#39; output streams</span>
+
+<span class="sd">        :param *args: file-like objects to connect to the manifold</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span> <span class="o">=</span> <span class="n">args</span>
+
+<div class="viewcode-block" id="Tee.write"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Write to the manifold which, in turn, writes to all connected output streams</span>
+
+<span class="sd">        :param text: text to write to the manifold</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">[</span><span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Tee.flush"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Flush any buffers of all connected file output-streams</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">[</span><span class="n">fd</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span> <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="Tee.close"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Close all connected files</span>
+
+<span class="sd">        This does avoid closing ``sys.__stdout__`` and ``sys.__stderr__``</span>
+
+<span class="sd">        .. doctest::</span>
+
+<span class="sd">            &gt;&gt;&gt; import sys, io</span>
+<span class="sd">            &gt;&gt;&gt; file_like = io.StringIO()</span>
+<span class="sd">            &gt;&gt;&gt; combined = Tee(file_like, sys.__stdout__)</span>
+<span class="sd">            &gt;&gt;&gt; file_like.closed</span>
+<span class="sd">            False</span>
+<span class="sd">            &gt;&gt;&gt; combined.close()</span>
+<span class="sd">            &gt;&gt;&gt; file_like.closed</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; sys.stdout.closed</span>
+<span class="sd">            False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">[</span><span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span> <span class="k">if</span> <span class="n">fd</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">__stderr__</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">__stdout__</span><span class="p">]]</span></div></div>
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">_permissive_open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Contextmanager that acts like a call to ``open()``  but accepts also </span>
+<span class="sd">    a already opened File object. If passed a string, the file is opened</span>
+<span class="sd">    using a call to ``open()`` passing all additional parameters along.</span>
+<span class="sd">    The file is automatically closed using ``File.close()`` after the </span>
+<span class="sd">    context manager exits only if the file was also opened by a call to this function.</span>
+
+<span class="sd">    .. doctest:: </span>
+
+<span class="sd">        &gt;&gt;&gt; import io, tempfile</span>
+<span class="sd">        &gt;&gt;&gt; outfile = io.StringIO()</span>
+<span class="sd">        &gt;&gt;&gt; with _permissive_open(outfile) as file:</span>
+<span class="sd">        ...     print(file.closed)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; file.closed</span>
+<span class="sd">        False</span>
+
+<span class="sd">    .. doctest:: </span>
+
+<span class="sd">        &gt;&gt;&gt; outfile = tempfile.NamedTemporaryFile(&#39;w&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; with _permissive_open(outfile.name, &#39;w+&#39;) as file:</span>
+<span class="sd">        ...     print(file.closed)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; file.closed</span>
+<span class="sd">        True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">file_obj</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">file_obj</span> <span class="o">=</span> <span class="n">file</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">file_obj</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c1"># close the file only if we opened it,</span>
+        <span class="c1"># otherwise leave it open</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">file_obj</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">_redirect_stream</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">_permissive_open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">old</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">out</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">out</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">old</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="redirected_stdout"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stdout">[docs]</a><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">redirected_stdout</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ContextManager that redirects stdout to a given file-like object </span>
+<span class="sd">    and restores the original state when leaving the context</span>
+
+<span class="sd">    :param file: string or file-like object to redirect stdout to. </span>
+<span class="sd">                 If passed a string, the file is opened for writing and closed </span>
+<span class="sd">                 after the contextmanager exits</span>
+
+<span class="sd">    .. doctest:: </span>
+
+<span class="sd">        &gt;&gt;&gt; import io</span>
+<span class="sd">        &gt;&gt;&gt; outfile = io.StringIO()</span>
+<span class="sd">        &gt;&gt;&gt; with redirected_stdout(outfile):</span>
+<span class="sd">        ...     print(&#39;this is written to outfile&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; assert outfile.getvalue() == &#39;this is written to outfile\\n&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">_redirect_stream</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;stdout&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">redirected</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">redirected</span></div>
+
+
+<div class="viewcode-block" id="redirected_stderr"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stderr">[docs]</a><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">redirected_stderr</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Same functionality as ``redirect_stdout`` but redirects the stderr stram instead</span>
+
+<span class="sd">    see :meth:`redirected_stdout`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">_redirect_stream</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;stderr&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">redirected</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">redirected</span></div>
+
+
+<div class="viewcode-block" id="redirected_stdstreams"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">redirected_stdstreams</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    redirects both output streams (``stderr`` and ``stdout``) to ``file``</span>
+
+<span class="sd">    see :meth:`redirected_stdout`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">_redirect_stream</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;stdout&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">redirected_stdout</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">_redirect_stream</span><span class="p">(</span><span class="n">redirected_stdout</span><span class="p">,</span> <span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;stderr&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">redirected_stderr</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">redirected_stderr</span></div>
+
+
+<div class="viewcode-block" id="mirrored_stdout"><a class="viewcode-back" href="../../pytb.html#pytb.io.mirrored_stdout">[docs]</a><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">mirrored_stdout</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ContextManager that mirrors stdout to a given file-like object </span>
+<span class="sd">    and restores the original state when leaving the context</span>
+
+<span class="sd">    This is essentially using a ``Tee`` piece manifold to ``file`` and ``sys.stdout``</span>
+<span class="sd">    as a parameter to ``redirected_stdout`` </span>
+
+<span class="sd">    :param file: string or file-like object to mirror stdout to. </span>
+<span class="sd">                 If passed a string, the file is opened for writing and closed </span>
+<span class="sd">                 after the contextmanager exits</span>
+
+<span class="sd">    .. doctest:: </span>
+
+<span class="sd">        &gt;&gt;&gt; import io</span>
+<span class="sd">        &gt;&gt;&gt; outfile = io.StringIO()</span>
+<span class="sd">        &gt;&gt;&gt; with mirrored_stdout(outfile):</span>
+<span class="sd">        ...     print(&#39;this is written to outfile and stdout&#39;)</span>
+<span class="sd">        this is written to outfile and stdout</span>
+<span class="sd">        &gt;&gt;&gt; assert outfile.getvalue() == &#39;this is written to outfile and stdout\\n&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">_permissive_open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">tee_piece</span> <span class="o">=</span> <span class="n">Tee</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">redirected_stdout</span><span class="p">(</span><span class="n">tee_piece</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="mirrored_stdstreams"><a class="viewcode-back" href="../../pytb.html#pytb.io.mirrored_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">mirrored_stdstreams</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Version of :meth:`mirrored_stdout` but mirrors ``stderr`` and ``stdout`` to file</span>
+
+<span class="sd">    see :meth:`mirrored_stdout`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">_permissive_open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out</span><span class="p">:</span>
+        <span class="n">tee_piece_out</span> <span class="o">=</span> <span class="n">Tee</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">redirected_stdout</span><span class="p">(</span><span class="n">tee_piece_out</span><span class="p">):</span>
+            <span class="n">tee_piece_err</span> <span class="o">=</span> <span class="n">Tee</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">redirected_stderr</span><span class="p">(</span><span class="n">tee_piece_err</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">out</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Grießhaber
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
