@@ -4,6 +4,7 @@ from .rdb import install_hook as install_rdb
 
 __all__ = ["io", "importlib", "config", "rdb"]
 
+_initialized = False
 
 def init(verbose=True):
     """
@@ -11,6 +12,9 @@ def init(verbose=True):
 
     :param verbose: print what this function is setting up
     """
+    if _initialized:
+        raise RuntimeError('pytb toolkit is already initialized')
+    
     config = current_config["init"]
 
     output = print if verbose else lambda x: None
@@ -32,3 +36,5 @@ def init(verbose=True):
         install_rdb()
     else:
         output("'install_rdb_hook' not set, skipping installation of hook")
+        
+    _initialized = True
