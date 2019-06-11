@@ -81,6 +81,7 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../pytb.html">pytb package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/config.html">pytb.config module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/importlib.html">pytb.importlib module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/io.html">pytb.io module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/rdb.html">pytb.rdb module</a></li>
@@ -154,8 +155,14 @@
 <span class="sd">This module handles the .pytb.conf files</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
+<div class="viewcode-block" id="Config"><a class="viewcode-back" href="../../modules/config.html#pytb.config.Config">[docs]</a><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides functionality to load a hierarchy of ``.pytb.config`` files.</span>
 
-<div class="viewcode-block" id="Config"><a class="viewcode-back" href="../../pytb.html#pytb.config.Config">[docs]</a><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">):</span>
+<span class="sd">    :param verbose: output debugging information including the paths</span>
+<span class="sd">        that will be checked for config files as well as all files that</span>
+<span class="sd">        are actually parsed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">defaults</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;init&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -185,7 +192,7 @@
 <span class="sd">    The loaction of the default config file (in the root of the package)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-<div class="viewcode-block" id="Config.get_config_file_locations"><a class="viewcode-back" href="../../pytb.html#pytb.config.Config.get_config_file_locations">[docs]</a>    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="Config.get_config_file_locations"><a class="viewcode-back" href="../../modules/config.html#pytb.config.Config.get_config_file_locations">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">get_config_file_locations</span><span class="p">():</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get a list of possible configuration file paths by starting at the </span>
@@ -218,7 +225,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reload</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
 
-<div class="viewcode-block" id="Config.reload"><a class="viewcode-back" href="../../pytb.html#pytb.config.Config.reload">[docs]</a>    <span class="k">def</span> <span class="nf">reload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="Config.reload"><a class="viewcode-back" href="../../modules/config.html#pytb.config.Config.reload">[docs]</a>    <span class="k">def</span> <span class="nf">reload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        load the configuration by initialising the default values from `Config.defaults` and then</span>
 <span class="sd">        traversing all possible configuration files overwriting all newly found values</span>
@@ -233,7 +240,7 @@
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;loaded config from </span><span class="si">{files_loaded}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Config.getlist"><a class="viewcode-back" href="../../pytb.html#pytb.config.Config.getlist">[docs]</a>    <span class="k">def</span> <span class="nf">getlist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="Config.getlist"><a class="viewcode-back" href="../../modules/config.html#pytb.config.Config.getlist">[docs]</a>    <span class="k">def</span> <span class="nf">getlist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        get a list of values that are seperated by a newline character</span>
 <span class="sd">        </span>
@@ -260,6 +267,9 @@
 
 
 <span class="n">current_config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">An instance of config that is automatically initialized when importing the module</span>
+<span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 
            </div>

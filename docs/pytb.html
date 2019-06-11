@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="pytb.importlib module" href="modules/importlib.html" />
+    <link rel="next" title="pytb.config module" href="modules/config.html" />
     <link rel="prev" title="PyTb (Python Toolbox)" href="index.html" /> 
 </head>
 
@@ -82,7 +82,11 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">pytb package</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pytb package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#autoconfigure-toolbox-frameworks">Autoconfigure toolbox frameworks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/config.html">pytb.config module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/importlib.html">pytb.importlib module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/io.html">pytb.io module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules/rdb.html">pytb.rdb module</a></li>
@@ -152,6 +156,25 @@
             
   <div class="section" id="pytb-package">
 <h1>pytb package<a class="headerlink" href="#pytb-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="autoconfigure-toolbox-frameworks">
+<h2>Autoconfigure toolbox frameworks<a class="headerlink" href="#autoconfigure-toolbox-frameworks" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">pytb</span></code> package provides an <code class="docutils literal notranslate"><span class="pre">init()</span></code> method that allows
+to automatically configure certain frameworks from the toolbox.</p>
+<p>The behavior of this method is configured based on the values in
+<a class="reference internal" href="modules/config.html#pytb.config.current_config" title="pytb.config.current_config"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytb.config.current_config</span></code></a>.</p>
+<p>The method has one parameter <code class="docutils literal notranslate"><span class="pre">verbose</span></code> which defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>
+which enables some output while initializing the subsystems.
+If you want to quietly initialize, set <cite>verbose</cite> explicitly to <cite>False</cite>.</p>
+<p>To avoid problems with multiple initializations, the method raises a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeException</span></code> if init is called a second time.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pytb</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pytb</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+<span class="go">&#39;disable_module_cache&#39; not set, skipping global context</span>
+<span class="go">installing NotebookLoader into &#39;sys.meta_path&#39;</span>
+<span class="go">installing RDB as default debugger in &#39;sys.breakpointhook&#39;</span>
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -162,7 +185,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="modules/importlib.html" class="btn btn-neutral float-right" title="pytb.importlib module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="modules/config.html" class="btn btn-neutral float-right" title="pytb.config module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral float-left" title="PyTb (Python Toolbox)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

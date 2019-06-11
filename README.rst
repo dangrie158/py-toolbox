@@ -15,6 +15,8 @@ Quickstart
 - `Load Jupyter Notebooks as Python Modules <https://dangrie158.github.io/py-toolbox/modules/importlib.html#importing-jupyter-notebooks-as-python-modules>`_
 - `Reload modules when importing again (do not cache the result) <https://dangrie158.github.io/py-toolbox/modules/importlib.html#automatically-reload-modules-and-packages-when-importing>`_
 - `Debug Remotely over a TCP connection <https://dangrie158.github.io/py-toolbox/modules/rdb.html#remote-debugging>`_
+- `Automatically configure the framework <https://dangrie158.github.io/py-toolbox/pytb.html#autoconfigure-toolbox-frameworks>`_
+- `Configure defaults <https://dangrie158.github.io/py-toolbox/modules/config.html#configure-the-toolkit>`_
 
 ------------
 Installation

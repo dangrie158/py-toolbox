@@ -23,6 +23,7 @@ test:
 
 clean:
 	-rm -r $(DOCS_DIR)/
+	-rm -r $(DOCS_SRC_DIR)/_build/html/
 	$(PYTHON) setup.py clean
 
 install:

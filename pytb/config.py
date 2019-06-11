@@ -5,8 +5,14 @@ import configparser
 This module handles the .pytb.conf files
 """
 
-
 class Config(configparser.ConfigParser):
+    """
+    Provides functionality to load a hierarchy of ``.pytb.config`` files.
+
+    :param verbose: output debugging information including the paths
+        that will be checked for config files as well as all files that
+        are actually parsed
+    """
 
     defaults = {
         "init": {
@@ -111,3 +117,6 @@ class Config(configparser.ConfigParser):
 
 
 current_config = Config()
+"""
+An instance of config that is automatically initialized when importing the module
+"""

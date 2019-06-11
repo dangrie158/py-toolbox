@@ -2,7 +2,7 @@ from .config import current_config
 from .importlib import NoModuleCacheContext, NotebookLoader
 from .rdb import install_hook as install_rdb
 
-__all__ = ["io", "importlib", "config", "rdb"]
+__all__ = ["io", "importlib", "config", "rdb", "init"]
 
 _initialized = False
 
@@ -12,6 +12,8 @@ def init(verbose=True):
 
     :param verbose: print what this function is setting up
     """
+    global _initialized
+    
     if _initialized:
         raise RuntimeError('pytb toolkit is already initialized')
     
