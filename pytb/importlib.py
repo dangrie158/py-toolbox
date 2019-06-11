@@ -7,6 +7,7 @@ from importlib.machinery import ModuleSpec
 import importlib
 import builtins
 from contextlib import suppress
+from .config import current_config as pytb_config
 
 with suppress(Exception):
     from nbformat import read as read_notebook
@@ -160,14 +161,7 @@ class NoModuleCacheContext(AbstractContextManager):
     # are some modules in the stdlib that do not like to be reloaded and
     # throw an error, so we exclude them here as they do not make sense
     # to live-reload them anyway
-    _no_reloadable_packages = sys.builtin_module_names + (
-        "re",
-        "importlib",
-        "pkg_resources",
-        "jsonschema",
-        "numpy",
-        "IPython"
-    )
+    _no_reloadable_packages = pytb_config.getlist('module_cache', 'non_reloadable_packages')
 
     class CachlessImporter:
         def __init__(self, import_fun, verbose, max_depth):
