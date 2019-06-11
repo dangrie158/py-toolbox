@@ -81,6 +81,9 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../pytb.html">pytb package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/importlib.html">pytb.importlib module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/io.html">pytb.io module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/rdb.html">pytb.rdb module</a></li>
 </ul>
 
             
@@ -157,7 +160,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 
-<div class="viewcode-block" id="Rdb"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.Rdb">[docs]</a><span class="k">class</span> <span class="nc">Rdb</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">Pdb</span><span class="p">):</span>
+<div class="viewcode-block" id="Rdb"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.Rdb">[docs]</a><span class="k">class</span> <span class="nc">Rdb</span><span class="p">(</span><span class="n">pdb</span><span class="o">.</span><span class="n">Pdb</span><span class="p">):</span>
 
     <span class="n">_std_streams</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;stdin&quot;</span><span class="p">,</span> <span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="s2">&quot;stderr&quot;</span><span class="p">]</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -239,24 +242,24 @@
 
         <span class="n">Rdb</span><span class="o">.</span><span class="n">_session</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="Rdb.do_continue"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.Rdb.do_continue">[docs]</a>    <span class="k">def</span> <span class="nf">do_continue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+<div class="viewcode-block" id="Rdb.do_continue"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.Rdb.do_continue">[docs]</a>    <span class="k">def</span> <span class="nf">do_continue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_flush_outputs</span><span class="p">()</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">do_continue</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span></div>
 
     <span class="n">do_c</span> <span class="o">=</span> <span class="n">do_cont</span> <span class="o">=</span> <span class="n">do_continue</span>
 
-<div class="viewcode-block" id="Rdb.do_EOF"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.Rdb.do_EOF">[docs]</a>    <span class="k">def</span> <span class="nf">do_EOF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+<div class="viewcode-block" id="Rdb.do_EOF"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.Rdb.do_EOF">[docs]</a>    <span class="k">def</span> <span class="nf">do_EOF</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">do_EOF</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Rdb.do_quit"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.Rdb.do_quit">[docs]</a>    <span class="k">def</span> <span class="nf">do_quit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
+<div class="viewcode-block" id="Rdb.do_quit"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.Rdb.do_quit">[docs]</a>    <span class="k">def</span> <span class="nf">do_quit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">do_quit</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span></div>
 
     <span class="n">do_q</span> <span class="o">=</span> <span class="n">do_exit</span> <span class="o">=</span> <span class="n">do_quit</span></div>
 
 
-<div class="viewcode-block" id="set_trace"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.set_trace">[docs]</a><span class="k">def</span> <span class="nf">set_trace</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">patch_stdio</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="set_trace"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.set_trace">[docs]</a><span class="k">def</span> <span class="nf">set_trace</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">patch_stdio</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Opens a remote PDB on the specified host and port if no session is running.</span>
 <span class="sd">    If a session is already running (was started previously and a client is still connected)</span>
@@ -278,14 +281,14 @@
     <span class="n">Rdb</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">set_trace</span><span class="p">(</span><span class="n">frame</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="p">)</span></div>
 
 <span class="n">_previous_breakpoint_hook</span> <span class="o">=</span> <span class="kc">None</span>
-<div class="viewcode-block" id="install_hook"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.install_hook">[docs]</a><span class="k">def</span> <span class="nf">install_hook</span><span class="p">():</span>
+<div class="viewcode-block" id="install_hook"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.install_hook">[docs]</a><span class="k">def</span> <span class="nf">install_hook</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Installs the remote debugger as standard debugging method and calls it when using the builtin `breakpoint()`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_previous_breakpoint_hook</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">breakpointhook</span>
     <span class="n">sys</span><span class="o">.</span><span class="n">breakpointhook</span> <span class="o">=</span> <span class="n">set_trace</span></div>
 
-<div class="viewcode-block" id="uninstall_hook"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.uninstall_hook">[docs]</a><span class="k">def</span> <span class="nf">uninstall_hook</span><span class="p">():</span>
+<div class="viewcode-block" id="uninstall_hook"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.uninstall_hook">[docs]</a><span class="k">def</span> <span class="nf">uninstall_hook</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Restore the original state of sys.breakpointhook. </span>
 <span class="sd">    If :meth:`install_hook` was never called before, this is a noop</span>
@@ -293,7 +296,7 @@
     <span class="k">if</span> <span class="n">_previous_breakpoint_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">breakpointhook</span> <span class="o">=</span> <span class="n">_previous_breakpoint_hook</span></div>
 
-<div class="viewcode-block" id="RdbClient"><a class="viewcode-back" href="../../pytb.html#pytb.rdb.RdbClient">[docs]</a><span class="k">class</span> <span class="nc">RdbClient</span><span class="p">:</span>
+<div class="viewcode-block" id="RdbClient"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.RdbClient">[docs]</a><span class="k">class</span> <span class="nc">RdbClient</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A simple ``netcat`` like socket client that can be used as a convenience </span>
 <span class="sd">    wrapper to connect to a remote debugger session.</span>

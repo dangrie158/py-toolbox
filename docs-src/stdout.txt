@@ -1,1 +1,1 @@
-this string will be written to stdout.txt and not to the console
+this will be written to stdout.txt and not to the console

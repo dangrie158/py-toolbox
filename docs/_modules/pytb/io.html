@@ -81,6 +81,9 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../pytb.html">pytb package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/importlib.html">pytb.importlib module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/io.html">pytb.io module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/rdb.html">pytb.rdb module</a></li>
 </ul>
 
             
@@ -152,7 +155,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 
-<div class="viewcode-block" id="Tee"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee">[docs]</a><span class="k">class</span> <span class="nc">Tee</span><span class="p">:</span>
+<div class="viewcode-block" id="Tee"><a class="viewcode-back" href="../../modules/io.html#pytb.io.Tee">[docs]</a><span class="k">class</span> <span class="nc">Tee</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A N-ended T-piece (manifold) for File objects that supports writing.</span>
 <span class="sd">    This is useful if you want to write to multiple files or file-like objects </span>
@@ -180,7 +183,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span> <span class="o">=</span> <span class="n">args</span>
 
-<div class="viewcode-block" id="Tee.write"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+<div class="viewcode-block" id="Tee.write"><a class="viewcode-back" href="../../modules/io.html#pytb.io.Tee.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Write to the manifold which, in turn, writes to all connected output streams</span>
 
@@ -188,13 +191,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="p">[</span><span class="n">fd</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Tee.flush"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Tee.flush"><a class="viewcode-back" href="../../modules/io.html#pytb.io.Tee.flush">[docs]</a>    <span class="k">def</span> <span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Flush any buffers of all connected file output-streams</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="p">[</span><span class="n">fd</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span> <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fds</span><span class="p">]</span></div>
 
-<div class="viewcode-block" id="Tee.close"><a class="viewcode-back" href="../../pytb.html#pytb.io.Tee.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Tee.close"><a class="viewcode-back" href="../../modules/io.html#pytb.io.Tee.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Close all connected files</span>
 
@@ -270,7 +273,7 @@
             <span class="nb">setattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">old</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="redirected_stdout"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stdout">[docs]</a><span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="redirected_stdout"><a class="viewcode-back" href="../../modules/io.html#pytb.io.redirected_stdout">[docs]</a><span class="nd">@contextmanager</span>
 <span class="k">def</span> <span class="nf">redirected_stdout</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    ContextManager that redirects stdout to a given file-like object </span>
@@ -292,7 +295,7 @@
         <span class="k">yield</span> <span class="n">redirected</span></div>
 
 
-<div class="viewcode-block" id="redirected_stderr"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stderr">[docs]</a><span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="redirected_stderr"><a class="viewcode-back" href="../../modules/io.html#pytb.io.redirected_stderr">[docs]</a><span class="nd">@contextmanager</span>
 <span class="k">def</span> <span class="nf">redirected_stderr</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Same functionality as ``redirect_stdout`` but redirects the stderr stram instead</span>
@@ -303,7 +306,7 @@
         <span class="k">yield</span> <span class="n">redirected</span></div>
 
 
-<div class="viewcode-block" id="redirected_stdstreams"><a class="viewcode-back" href="../../pytb.html#pytb.io.redirected_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="redirected_stdstreams"><a class="viewcode-back" href="../../modules/io.html#pytb.io.redirected_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
 <span class="k">def</span> <span class="nf">redirected_stdstreams</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    redirects both output streams (``stderr`` and ``stdout``) to ``file``</span>
@@ -315,7 +318,7 @@
             <span class="k">yield</span> <span class="n">redirected_stderr</span></div>
 
 
-<div class="viewcode-block" id="mirrored_stdout"><a class="viewcode-back" href="../../pytb.html#pytb.io.mirrored_stdout">[docs]</a><span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="mirrored_stdout"><a class="viewcode-back" href="../../modules/io.html#pytb.io.mirrored_stdout">[docs]</a><span class="nd">@contextmanager</span>
 <span class="k">def</span> <span class="nf">mirrored_stdout</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    ContextManager that mirrors stdout to a given file-like object </span>
@@ -343,7 +346,7 @@
             <span class="k">yield</span> <span class="n">out</span></div>
 
 
-<div class="viewcode-block" id="mirrored_stdstreams"><a class="viewcode-back" href="../../pytb.html#pytb.io.mirrored_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
+<div class="viewcode-block" id="mirrored_stdstreams"><a class="viewcode-back" href="../../modules/io.html#pytb.io.mirrored_stdstreams">[docs]</a><span class="nd">@contextmanager</span>
 <span class="k">def</span> <span class="nf">mirrored_stdstreams</span><span class="p">(</span><span class="n">file</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Version of :meth:`mirrored_stdout` but mirrors ``stderr`` and ``stdout`` to file</span>
