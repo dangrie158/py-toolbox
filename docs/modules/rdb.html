@@ -174,63 +174,15 @@ the provided <code class="docutils literal notranslate"><span class="pre">RdbCli
 <dl class="class">
 <dt id="pytb.rdb.Rdb">
 <em class="property">class </em><code class="descclassname">pytb.rdb.</code><code class="descname">Rdb</code><span class="sig-paren">(</span><em>host=None</em>, <em>port=None</em>, <em>patch_stdio=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/rdb.html#Rdb"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.rdb.Rdb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">pdb.Pdb</span></code></p>
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_EOF">
-<code class="descname">do_EOF</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/rdb.html#Rdb.do_EOF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.rdb.Rdb.do_EOF" title="Permalink to this definition">¶</a></dt>
-<dd><p>EOF
-Handles the receipt of EOF as a command.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_c">
-<code class="descname">do_c</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#pytb.rdb.Rdb.do_c" title="Permalink to this definition">¶</a></dt>
-<dd><p>c(ont(inue))
-Continue execution, only stop when a breakpoint is encountered.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_cont">
-<code class="descname">do_cont</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#pytb.rdb.Rdb.do_cont" title="Permalink to this definition">¶</a></dt>
-<dd><p>c(ont(inue))
-Continue execution, only stop when a breakpoint is encountered.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_continue">
-<code class="descname">do_continue</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/rdb.html#Rdb.do_continue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.rdb.Rdb.do_continue" title="Permalink to this definition">¶</a></dt>
-<dd><p>c(ont(inue))
-Continue execution, only stop when a breakpoint is encountered.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_exit">
-<code class="descname">do_exit</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#pytb.rdb.Rdb.do_exit" title="Permalink to this definition">¶</a></dt>
-<dd><p>q(uit)
-exit</p>
-<blockquote>
-<div><p>Quit from the debugger. The program being executed is aborted.</p>
-</div></blockquote>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_q">
-<code class="descname">do_q</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="headerlink" href="#pytb.rdb.Rdb.do_q" title="Permalink to this definition">¶</a></dt>
-<dd><p>q(uit)
-exit</p>
-<blockquote>
-<div><p>Quit from the debugger. The program being executed is aborted.</p>
-</div></blockquote>
-</dd></dl>
-
-<dl class="method">
-<dt id="pytb.rdb.Rdb.do_quit">
-<code class="descname">do_quit</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/rdb.html#Rdb.do_quit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.rdb.Rdb.do_quit" title="Permalink to this definition">¶</a></dt>
-<dd><p>q(uit)
-exit</p>
-<blockquote>
-<div><p>Quit from the debugger. The program being executed is aborted.</p>
-</div></blockquote>
+<dd><dl class="method">
+<dt id="pytb.rdb.Rdb._run_mainsafe">
+<code class="descname">_run_mainsafe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/rdb.html#Rdb._run_mainsafe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.rdb.Rdb._run_mainsafe" title="Permalink to this definition">¶</a></dt>
+<dd><p>this contextmanager backs up the <code class="docutils literal notranslate"><span class="pre">__main__</span></code> module’s <code class="docutils literal notranslate"><span class="pre">__dict__</span></code>
+before entering the context and makes sure the original state is restored
+before exiting from the context.</p>
+<p>This enables <code class="xref py py-meth docutils literal notranslate"><span class="pre">_runscript()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">_runmodule()</span></code> to be called from 
+<code class="docutils literal notranslate"><span class="pre">__main__</span></code> which would otherwise not work as those methods clear the original
+<code class="docutils literal notranslate"><span class="pre">__dict__</span></code></p>
 </dd></dl>
 
 </dd></dl>

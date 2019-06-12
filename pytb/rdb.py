@@ -5,6 +5,7 @@ import os
 import selectors
 import fcntl
 import argparse
+from contextlib import contextmanager
 
 from .config import current_config as pytb_config
 
@@ -55,6 +56,7 @@ class Rdb(pdb.Pdb):
         )
         listen_socket.listen(1)
         connection, address = listen_socket.accept()
+        print(f"new connection from {address[0]}:{address[1]}", file=sys.__stderr__)
 
         self.connection_file = connection.makefile("rw")
         kwargs["stdin"] = self.connection_file
@@ -110,6 +112,34 @@ class Rdb(pdb.Pdb):
         return super().do_quit(arg)
 
     do_q = do_exit = do_quit
+
+    @contextmanager
+    def _run_mainsafe(self):
+        """
+        this contextmanager backs up the ``__main__`` module's ``__dict__``
+        before entering the context and makes sure the original state is restored
+        before exiting from the context.
+
+        This enables :meth:`_runscript` and :meth:`_runmodule` to be called from 
+        ``__main__`` which would otherwise not work as those methods clear the original
+        ``__dict__``
+        """
+        import __main__
+
+        main_backup = __main__.__dict__.copy()
+        try:
+            yield
+        finally:
+            __main__.__dict__.clear()
+            __main__.__dict__.update(main_backup)
+
+    def _runscript(self, *args, **kwargs):
+        with self._run_mainsafe():
+            super()._runscript(*args, **kwargs)
+
+    def _runmodule(self, *args, **kwargs):
+        with self._run_mainsafe():
+            super()._runmodule(*args, **kwargs)
 
 
 def set_trace(host=None, port=None, patch_stdio=False):
@@ -172,23 +202,32 @@ class RdbClient:
         port = int(config.get("port")) if port is None else port
 
         self.socket = socket.create_connection((host, port))
+        self.socket_closed = False
 
         self.socket.setblocking(False)
 
+        self.stdin = sys.stdin
+        self.stdout = sys.stdout.buffer.raw
+
         # make stdin non-blocking to multiplex reading with the socket
-        orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
-        fcntl.fcntl(sys.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
+        orig_fl = fcntl.fcntl(self.stdin, fcntl.F_GETFL)
+        fcntl.fcntl(self.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
 
         # install the mulitplexing selector on the socket and stdin (stdout still is blocking)
         RdbClient._selector.register(
             self.socket, selectors.EVENT_READ | selectors.EVENT_WRITE, self._handle_io
         )
-        RdbClient._selector.register(sys.stdin, selectors.EVENT_READ, self._handle_io)
+        RdbClient._selector.register(self.stdin, selectors.EVENT_READ, self._handle_io)
+        RdbClient._selector.register(
+            self.stdout, selectors.EVENT_WRITE, self._handle_io
+        )
 
         # create an empty string buffer
-        self.socketbuf = ""
+        self.socketbuf = bytearray()
+        self.stdoutbuf = bytearray()
 
-        while True:
+        # loop until the socket is closed and the stdout buffer is empty
+        while not self.socket_closed or len(self.stdoutbuf) > 0:
             # wait for I/O
             events = RdbClient._selector.select()
             for key, mask in events:
@@ -199,10 +238,16 @@ class RdbClient:
         if stream is self.socket:
             if mask & selectors.EVENT_READ:
                 encoding = sys.stdout.encoding
-                sys.stdout.write(self.socket.recv(1024).decode(encoding, "ignore"))
+                data_read = self.socket.recv(1024)
+                if len(data_read) == 0:
+                    self.socket_closed = True
+                self.stdoutbuf += data_read
             elif mask & selectors.EVENT_WRITE:
                 if self.socketbuf:
-                    sent = self.socket.send(self.socketbuf.encode(sys.stdout.encoding))
+                    sent = self.socket.send(self.socketbuf)
                     self.socketbuf = self.socketbuf[sent:]
-        elif stream is sys.stdin:
-            self.socketbuf += sys.stdin.read()
+        elif stream is self.stdin:
+            self.socketbuf += self.stdin.read().encode(sys.stdout.encoding)
+        elif stream is self.stdout:
+            sent = self.stdout.write(self.stdoutbuf)
+            self.stdoutbuf = self.stdoutbuf[sent:]

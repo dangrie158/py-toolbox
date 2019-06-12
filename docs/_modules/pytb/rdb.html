@@ -155,6 +155,7 @@
 <span class="kn">import</span> <span class="nn">selectors</span>
 <span class="kn">import</span> <span class="nn">fcntl</span>
 <span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
 
 <span class="kn">from</span> <span class="nn">.config</span> <span class="k">import</span> <span class="n">current_config</span> <span class="k">as</span> <span class="n">pytb_config</span>
 
@@ -205,6 +206,7 @@
         <span class="p">)</span>
         <span class="n">listen_socket</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">connection</span><span class="p">,</span> <span class="n">address</span> <span class="o">=</span> <span class="n">listen_socket</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;new connection from </span><span class="si">{address[0]}</span><span class="s2">:</span><span class="si">{address[1]}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">__stderr__</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">connection_file</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">makefile</span><span class="p">(</span><span class="s2">&quot;rw&quot;</span><span class="p">)</span>
         <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;stdin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection_file</span>
@@ -259,7 +261,35 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup</span><span class="p">()</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">do_quit</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span></div>
 
-    <span class="n">do_q</span> <span class="o">=</span> <span class="n">do_exit</span> <span class="o">=</span> <span class="n">do_quit</span></div>
+    <span class="n">do_q</span> <span class="o">=</span> <span class="n">do_exit</span> <span class="o">=</span> <span class="n">do_quit</span>
+
+<div class="viewcode-block" id="Rdb._run_mainsafe"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.Rdb._run_mainsafe">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">_run_mainsafe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        this contextmanager backs up the ``__main__`` module&#39;s ``__dict__``</span>
+<span class="sd">        before entering the context and makes sure the original state is restored</span>
+<span class="sd">        before exiting from the context.</span>
+
+<span class="sd">        This enables :meth:`_runscript` and :meth:`_runmodule` to be called from </span>
+<span class="sd">        ``__main__`` which would otherwise not work as those methods clear the original</span>
+<span class="sd">        ``__dict__``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">__main__</span>
+
+        <span class="n">main_backup</span> <span class="o">=</span> <span class="n">__main__</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">__main__</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">__main__</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">main_backup</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_runscript</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_mainsafe</span><span class="p">():</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_runscript</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_runmodule</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_mainsafe</span><span class="p">():</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_runmodule</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="set_trace"><a class="viewcode-back" href="../../modules/rdb.html#pytb.rdb.set_trace">[docs]</a><span class="k">def</span> <span class="nf">set_trace</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">patch_stdio</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
@@ -322,23 +352,32 @@
         <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port&quot;</span><span class="p">))</span> <span class="k">if</span> <span class="n">port</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">port</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">((</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket_closed</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">setblocking</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">raw</span>
+
         <span class="c1"># make stdin non-blocking to multiplex reading with the socket</span>
-        <span class="n">orig_fl</span> <span class="o">=</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_GETFL</span><span class="p">)</span>
-        <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_SETFL</span><span class="p">,</span> <span class="n">orig_fl</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span><span class="p">)</span>
+        <span class="n">orig_fl</span> <span class="o">=</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_GETFL</span><span class="p">)</span>
+        <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_SETFL</span><span class="p">,</span> <span class="n">orig_fl</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span><span class="p">)</span>
 
         <span class="c1"># install the mulitplexing selector on the socket and stdin (stdout still is blocking)</span>
         <span class="n">RdbClient</span><span class="o">.</span><span class="n">_selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span> <span class="o">|</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_WRITE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_io</span>
         <span class="p">)</span>
-        <span class="n">RdbClient</span><span class="o">.</span><span class="n">_selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_io</span><span class="p">)</span>
+        <span class="n">RdbClient</span><span class="o">.</span><span class="n">_selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_io</span><span class="p">)</span>
+        <span class="n">RdbClient</span><span class="o">.</span><span class="n">_selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_WRITE</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_io</span>
+        <span class="p">)</span>
 
         <span class="c1"># create an empty string buffer</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
 
-        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="c1"># loop until the socket is closed and the stdout buffer is empty</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_closed</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># wait for I/O</span>
             <span class="n">events</span> <span class="o">=</span> <span class="n">RdbClient</span><span class="o">.</span><span class="n">_selector</span><span class="o">.</span><span class="n">select</span><span class="p">()</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
@@ -349,13 +388,19 @@
         <span class="k">if</span> <span class="n">stream</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span><span class="p">:</span>
                 <span class="n">encoding</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">encoding</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encoding</span><span class="p">,</span> <span class="s2">&quot;ignore&quot;</span><span class="p">))</span>
+                <span class="n">data_read</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_read</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">socket_closed</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span> <span class="o">+=</span> <span class="n">data_read</span>
             <span class="k">elif</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_WRITE</span><span class="p">:</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span><span class="p">:</span>
-                    <span class="n">sent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">encoding</span><span class="p">))</span>
+                    <span class="n">sent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span><span class="p">[</span><span class="n">sent</span><span class="p">:]</span>
-        <span class="k">elif</span> <span class="n">stream</span> <span class="ow">is</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span> <span class="o">+=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+        <span class="k">elif</span> <span class="n">stream</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdin</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socketbuf</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">stream</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="p">:</span>
+            <span class="n">sent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stdoutbuf</span><span class="p">[</span><span class="n">sent</span><span class="p">:]</span></div>
 </pre></div>
 
            </div>
