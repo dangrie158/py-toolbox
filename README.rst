@@ -13,10 +13,11 @@ regularly during prototyping.
 Quickstart
 ----------
 
-- `Mirroring all output of a script to a file <https://dangrie158.github.io/py-toolbox/modules/io.html#redirecting-output-streams>`_
+- `Monitor long running tasks and get notified by email if something goes wrong or the job has finished <https://dangrie158.github.io/py-toolbox/modules/notification.html#setup-monitoring-for-your-long-running-tasks>`_
+- `Debug Remotely over a TCP connection <https://dangrie158.github.io/py-toolbox/modules/rdb.html#remote-debugging>`_
 - `Load Jupyter Notebooks as Python Modules <https://dangrie158.github.io/py-toolbox/modules/importlib.html#importing-jupyter-notebooks-as-python-modules>`_
 - `Reload modules when importing again (do not cache the result) <https://dangrie158.github.io/py-toolbox/modules/importlib.html#automatically-reload-modules-and-packages-when-importing>`_
-- `Debug Remotely over a TCP connection <https://dangrie158.github.io/py-toolbox/modules/rdb.html#remote-debugging>`_
+- `Mirroring all output of a script to a file <https://dangrie158.github.io/py-toolbox/modules/io.html#redirecting-output-streams>`_
 - `Automatically configure the framework <https://dangrie158.github.io/py-toolbox/modules/core.html#autoconfigure-toolbox-frameworks>`_
 - `Configure defaults <https://dangrie158.github.io/py-toolbox/modules/config.html#configure-the-toolkit>`_
 

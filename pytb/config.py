@@ -30,6 +30,7 @@ class Config(configparser.ConfigParser):
             "patch_stdio": True,
         },
         "module_cache": {"non_reloadable_packages": []},
+        "notify": {"smtp_host": "127.0.0.1", "smtp_port": 465, "smtp_ssl": True},
     }
     """
     Set of default fallback values for all config settings
