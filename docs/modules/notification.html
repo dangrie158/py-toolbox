@@ -1,0 +1,264 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pytb.notification module &mdash; pytb  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytb.rdb module" href="rdb.html" />
+    <link rel="prev" title="pytb.io module" href="io.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> pytb
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">pytb.config module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core.html">pytb.core module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="importlib.html">pytb.importlib module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="io.html">pytb.io module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pytb.notification module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setup-monitoring-for-your-long-running-tasks">Setup monitoring for your long running tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pytb.notification">API Documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rdb.html">pytb.rdb module</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pytb</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>pytb.notification module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/modules/notification.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="pytb-notification-module">
+<h1>pytb.notification module<a class="headerlink" href="#pytb-notification-module" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="setup-monitoring-for-your-long-running-tasks">
+<h2>Setup monitoring for your long running tasks<a class="headerlink" href="#setup-monitoring-for-your-long-running-tasks" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-pytb.notification">
+<span id="api-documentation"></span><h2>API Documentation<a class="headerlink" href="#module-pytb.notification" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pytb.notification.Notify">
+<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">Notify</code><span class="sig-paren">(</span><em>email_addresses=None</em>, <em>smtp_host=None</em>, <em>smtp_port=None</em>, <em>smtp_ssl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object captures the basic configuration of how a notification should be handled.
+This includes the configuration of the SMTP connection to send emails which is either specified
+at runtime or loaded from the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> files <code class="docutils literal notranslate"><span class="pre">notify</span></code> section.</p>
+<p>The methods <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">when_stalled()</span></code> are reenterable
+context managers. Thus a single <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object can be reused at several places and 
+different context-managers can be reused in the same context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>email_addresses</strong> – a list of email addresses. Each entry is a seperate recipient of 
+the notification send by this <code class="docutils literal notranslate"><span class="pre">Notify</span></code></p></li>
+<li><p><strong>smtp_host</strong> – The SMTP servers address used to send the notifications</p></li>
+<li><p><strong>smtp_port</strong> – The TCP port of the SMTP server</p></li>
+<li><p><strong>smtp_ssl</strong> – Whether or not to use SSL for the SMTP connection</p></li>
+</ul>
+</dd>
+</dl>
+<p>All parameters are initialized from the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> if they are passed <code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+<dl class="method">
+<dt id="pytb.notification.Notify.when_done">
+<code class="descname">when_done</code><span class="sig-paren">(</span><em>message</em>, <em>only_if_error=False</em>, <em>capture_output=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify.when_done"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify.when_done" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a context that, when exited, will send notifications. If an unhandled exception
+is raised during execution, a notification on the failure of the execution is sent.
+If the context exits cleanly, a notification is only sent if <code class="docutils literal notranslate"><span class="pre">only_if_error</span></code> is set to <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+<p>By default, all output to the <code class="docutils literal notranslate"><span class="pre">stdio</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> streams is captured and sent in the notification.
+If you expect huge amounts of output during the execution of the monitored code, you can
+disable the capturing with the <code class="docutils literal notranslate"><span class="pre">capture_output</span></code> parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> – A short description of the monitored block. Used as the subject of the notification</p></li>
+<li><p><strong>only_if_error</strong> – if the context manager exits cleanly, do not send any notifications</p></li>
+<li><p><strong>capture_output</strong> – capture all output to the <code class="docutils literal notranslate"><span class="pre">stdout</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> stream and append it
+to the notification</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="rdb.html" class="btn btn-neutral float-right" title="pytb.rdb module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="io.html" class="btn btn-neutral float-left" title="pytb.io module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Grießhaber
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

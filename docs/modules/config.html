@@ -92,6 +92,7 @@
 <li class="toctree-l1"><a class="reference internal" href="core.html">pytb.core module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="importlib.html">pytb.importlib module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="io.html">pytb.io module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notification.html">pytb.notification module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rdb.html">pytb.rdb module</a></li>
 </ul>
 
@@ -219,6 +220,17 @@ but being overwritten by any more-specific config file in the lookup hierarchy.<
 <span class="s">    jsonschema</span>
 <span class="s">    numpy</span>
 <span class="s">    IPython</span>
+
+<span class="c1"># automatic task progress notification via E-Mail</span>
+<span class="k">[notify]</span>
+<span class="c1"># smtp server setup used to send notifications to the user</span>
+<span class="na">smtp_host</span> <span class="o">=</span> <span class="s">127.0.0.1</span>
+<span class="na">smtp_port</span> <span class="o">=</span> <span class="s">465</span>
+<span class="na">smtp_ssl</span> <span class="o">=</span> <span class="s">True</span>
+
+<span class="c1"># a list of email-addresses where notifications are sent</span>
+<span class="na">email_addresses</span> <span class="o">=</span> <span class="s"></span>
+<span class="s">    </span>
 </pre></div>
 </div>
 </div>
@@ -250,7 +262,7 @@ are actually parsed</p>
 
 <dl class="attribute">
 <dt id="pytb.config.Config.defaults">
-<code class="descname">defaults</code><em class="property"> = {'init': {'disable_module_cache': False, 'install_notebook_loader': False, 'install_rdb_hook': False}, 'module_cache': {'non_reloadable_packages': []}, 'rdb': {'bind_to': '0.0.0.0', 'host': '127.0.0.1', 'patch_stdio': True, 'port': 8268}}</em><a class="headerlink" href="#pytb.config.Config.defaults" title="Permalink to this definition">¶</a></dt>
+<code class="descname">defaults</code><em class="property"> = {'init': {'disable_module_cache': False, 'install_notebook_loader': False, 'install_rdb_hook': False}, 'module_cache': {'non_reloadable_packages': []}, 'notify': {'smtp_host': '127.0.0.1', 'smtp_port': 465, 'smtp_ssl': True}, 'rdb': {'bind_to': '0.0.0.0', 'host': '127.0.0.1', 'patch_stdio': True, 'port': 8268}}</em><a class="headerlink" href="#pytb.config.Config.defaults" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set of default fallback values for all config settings</p>
 </dd></dl>
 

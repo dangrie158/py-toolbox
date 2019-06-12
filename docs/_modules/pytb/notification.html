@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>pytb.notification &mdash; pytb  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> pytb
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">Command Line Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/config.html">pytb.config module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/core.html">pytb.core module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/importlib.html">pytb.importlib module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/io.html">pytb.io module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/notification.html">pytb.notification module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/rdb.html">pytb.rdb module</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">pytb</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>pytb.notification</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for pytb.notification</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">smtplib</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">nullcontext</span>
+<span class="kn">from</span> <span class="nn">email.message</span> <span class="k">import</span> <span class="n">EmailMessage</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="k">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>
+
+<span class="kn">from</span> <span class="nn">.config</span> <span class="k">import</span> <span class="n">current_config</span>
+<span class="kn">from</span> <span class="nn">.io</span> <span class="k">import</span> <span class="n">mirrored_stdstreams</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Automatic task progress and monitoring notification via E-Mail.</span>
+<span class="sd">Especially useful to supervise long-running tasks</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Notify"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify">[docs]</a><span class="k">class</span> <span class="nc">Notify</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A ``Notify`` object captures the basic configuration of how a notification should be handled.</span>
+<span class="sd">    This includes the configuration of the SMTP connection to send emails which is either specified</span>
+<span class="sd">    at runtime or loaded from the effective ``.pytb.config`` files ``notify`` section.</span>
+
+<span class="sd">    The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled` are reenterable</span>
+<span class="sd">    context managers. Thus a single ``Notify`` object can be reused at several places and </span>
+<span class="sd">    different context-managers can be reused in the same context.</span>
+
+<span class="sd">    :param email_addresses: a list of email addresses. Each entry is a seperate recipient of </span>
+<span class="sd">        the notification send by this ``Notify``</span>
+<span class="sd">    :param smtp_host: The SMTP servers address used to send the notifications</span>
+<span class="sd">    :param smtp_port: The TCP port of the SMTP server</span>
+<span class="sd">    :param smtp_ssl: Whether or not to use SSL for the SMTP connection</span>
+
+<span class="sd">    All parameters are initialized from the effective ``.pytb.config`` if they are passed ``None``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">email_addresses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_ssl</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span>
+            <span class="n">f</span><span class="s2">&quot;</span><span class="si">{self.__class__.__module__}</span><span class="s2">.</span><span class="si">{self.__class__.__name__}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">notify_config</span> <span class="o">=</span> <span class="n">current_config</span><span class="p">[</span><span class="s2">&quot;notify&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">email_addresses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">email_addresses</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">&quot;email_addresses&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">smtp_host</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">smtp_host</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;smtp_host&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">smtp_port</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">smtp_port</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">getint</span><span class="p">(</span><span class="s2">&quot;smtp_port&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">smtp_ssl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">smtp_ssl</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s2">&quot;smtp_ssl&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">email_addresses</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;email_addresses is an empty list, no emails will be sent&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="n">f</span><span class="s2">&quot;Notify object configured to send emails to </span><span class="si">{email_addresses}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">email_addresses</span> <span class="o">=</span> <span class="n">email_addresses</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span> <span class="o">=</span> <span class="n">smtplib</span><span class="o">.</span><span class="n">SMTP_SSL</span> <span class="k">if</span> <span class="n">smtp_ssl</span> <span class="k">else</span> <span class="n">smtplib</span><span class="o">.</span><span class="n">SMTP</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">smtp_host</span> <span class="o">=</span> <span class="n">smtp_host</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">smtp_port</span> <span class="o">=</span> <span class="n">smtp_port</span>
+
+<div class="viewcode-block" id="Notify.when_done"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify.when_done">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">only_if_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a context that, when exited, will send notifications. If an unhandled exception</span>
+<span class="sd">        is raised during execution, a notification on the failure of the execution is sent.</span>
+<span class="sd">        If the context exits cleanly, a notification is only sent if ``only_if_error`` is set to ``False``</span>
+
+<span class="sd">        By default, all output to the ``stdio`` and ``stderr`` streams is captured and sent in the notification.</span>
+<span class="sd">        If you expect huge amounts of output during the execution of the monitored code, you can</span>
+<span class="sd">        disable the capturing with the ``capture_output`` parameter.</span>
+
+<span class="sd">        :param message: A short description of the monitored block. Used as the subject of the notification</span>
+<span class="sd">        :param only_if_error: if the context manager exits cleanly, do not send any notifications</span>
+<span class="sd">        :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it</span>
+<span class="sd">            to the notification</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;entering when done context&quot;</span><span class="p">)</span>
+
+        <span class="c1"># we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`</span>
+        <span class="n">caller_frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span>
+
+        <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">output_handler</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">)</span> <span class="k">if</span> <span class="n">capture_output</span> <span class="k">else</span> <span class="n">nullcontext</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">exception</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
+                <span class="k">yield</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">exception</span> <span class="o">=</span> <span class="n">e</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">only_if_error</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="n">f</span><span class="s2">&quot;Notification context left without error. Not firing notification&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">elif</span> <span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">exception</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_success</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">every</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">when_stalled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">send_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">smtp_host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_port</span><span class="p">)</span> <span class="k">as</span> <span class="n">smtp</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;sending message to </span><span class="si">{message[&#39;To&#39;]}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">smtp</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c1"># we do not want to disrupt the user program if we fail to send the message</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;error during sending of notification&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+                <span class="k">pass</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Grießhaber
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
