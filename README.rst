@@ -6,6 +6,7 @@ This is a collection of useful snippets I find myself to use
 regularly during prototyping.
 
 `View the complete documentation <https://dangrie158.github.io/py-toolbox/>`_
+
 `View the code <https://github.com/dangrie158/py-toolbox>`_
 
 ----------
