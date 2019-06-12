@@ -5,6 +5,7 @@ import configparser
 This module handles the .pytb.conf files
 """
 
+
 class Config(configparser.ConfigParser):
     """
     Provides functionality to load a hierarchy of ``.pytb.config`` files.

@@ -4,6 +4,8 @@ import sys
 import os
 import selectors
 import fcntl
+import argparse
+
 from .config import current_config as pytb_config
 
 """
@@ -131,13 +133,17 @@ def set_trace(host=None, port=None, patch_stdio=False):
 
     Rdb._session.set_trace(frame=sys._getframe().f_back)
 
+
 _previous_breakpoint_hook = None
+
+
 def install_hook():
     """
     Installs the remote debugger as standard debugging method and calls it when using the builtin `breakpoint()`
     """
     _previous_breakpoint_hook = sys.breakpointhook
     sys.breakpointhook = set_trace
+
 
 def uninstall_hook():
     """
@@ -146,6 +152,7 @@ def uninstall_hook():
     """
     if _previous_breakpoint_hook is not None:
         sys.breakpointhook = _previous_breakpoint_hook
+
 
 class RdbClient:
     """
@@ -161,10 +168,11 @@ class RdbClient:
 
         # load the parameters from the config
         config = pytb_config["rdb"]
-        host = config.get("bind_to") if host is None else host
+        host = config.get("host") if host is None else host
         port = int(config.get("port")) if port is None else port
 
         self.socket = socket.create_connection((host, port))
+
         self.socket.setblocking(False)
 
         # make stdin non-blocking to multiplex reading with the socket

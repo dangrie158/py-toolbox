@@ -6,6 +6,7 @@ import io
 
 from pytb import importlib, test, io as pyio
 
+
 class TestNotebookLoader(unittest.TestCase):
     def test_load_notebook(self):
         out = io.StringIO()
@@ -26,6 +27,7 @@ class TestNoModuleCache(unittest.TestCase):
     def test_reload_on_import(self):
 
         from .fixtures import random_module
+
         rand_num_one = random_module.random_number
         with importlib.NoModuleCacheContext():
             from .fixtures import random_module
@@ -35,9 +37,10 @@ class TestNoModuleCache(unittest.TestCase):
 
         with importlib.no_module_cache:
             from .fixtures import random_module
-        
+
         rand_num_three = random_module.random_number
         self.assertNotEqual(rand_num_two, rand_num_three)
+
 
 suite = unittest.TestSuite()
 suite.addTest(doctest.DocTestSuite(importlib))

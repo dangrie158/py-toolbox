@@ -80,8 +80,8 @@
             
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../pytb.html">pytb package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/config.html">pytb.config module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules/core.html">pytb.core module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/importlib.html">pytb.importlib module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/io.html">pytb.io module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules/rdb.html">pytb.rdb module</a></li>
@@ -172,7 +172,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 
-<div class="viewcode-block" id="ModuleLoader"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.ModuleLoader">[docs]</a><span class="k">class</span> <span class="nc">ModuleLoader</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
+<div class="viewcode-block" id="ModuleLoader"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.ModuleLoader">[docs]</a><span class="k">class</span> <span class="nc">ModuleLoader</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A abstract base class for a general module loader interface </span>
 <span class="sd">    that can be dynamically installed and uninstalled from the ``sys.meta_path``</span>
@@ -218,7 +218,7 @@
     <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">uninstall</span><span class="p">()</span>
 
-<div class="viewcode-block" id="ModuleLoader.install"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.ModuleLoader.install">[docs]</a>    <span class="k">def</span> <span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ModuleLoader.install"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.ModuleLoader.install">[docs]</a>    <span class="k">def</span> <span class="nf">install</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Install this loader into the metapath.</span>
 
@@ -239,7 +239,7 @@
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Loader was already installed.&quot;</span><span class="p">)</span>
         <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="ModuleLoader.uninstall"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.ModuleLoader.uninstall">[docs]</a>    <span class="k">def</span> <span class="nf">uninstall</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="ModuleLoader.uninstall"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.ModuleLoader.uninstall">[docs]</a>    <span class="k">def</span> <span class="nf">uninstall</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Uninstall this loader from the meta_path.</span>
 
@@ -264,7 +264,7 @@
                 <span class="s2">&quot;Tried to uninstall loader that is not installed or was already uninstalled.&quot;</span>
             <span class="p">)</span></div>
 
-<div class="viewcode-block" id="ModuleLoader.install_hook"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.ModuleLoader.install_hook">[docs]</a>    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="ModuleLoader.install_hook"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.ModuleLoader.install_hook">[docs]</a>    <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">install_hook</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Install an instance of the loader and return the instance</span>
@@ -281,7 +281,7 @@
         <span class="k">return</span> <span class="n">loader</span></div></div>
 
 
-<div class="viewcode-block" id="NoModuleCacheContext"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.NoModuleCacheContext">[docs]</a><span class="k">class</span> <span class="nc">NoModuleCacheContext</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
+<div class="viewcode-block" id="NoModuleCacheContext"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.NoModuleCacheContext">[docs]</a><span class="k">class</span> <span class="nc">NoModuleCacheContext</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Contextmanager to temporarly disable module chaching</span>
 
@@ -311,7 +311,9 @@
     <span class="c1"># are some modules in the stdlib that do not like to be reloaded and</span>
     <span class="c1"># throw an error, so we exclude them here as they do not make sense</span>
     <span class="c1"># to live-reload them anyway</span>
-    <span class="n">_no_reloadable_packages</span> <span class="o">=</span> <span class="n">pytb_config</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s1">&#39;module_cache&#39;</span><span class="p">,</span> <span class="s1">&#39;non_reloadable_packages&#39;</span><span class="p">)</span>
+    <span class="n">_no_reloadable_packages</span> <span class="o">=</span> <span class="n">pytb_config</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+        <span class="s2">&quot;module_cache&quot;</span><span class="p">,</span> <span class="s2">&quot;non_reloadable_packages&quot;</span>
+    <span class="p">)</span>
 
     <span class="k">class</span> <span class="nc">CachlessImporter</span><span class="p">:</span>
         <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">import_fun</span><span class="p">,</span> <span class="n">verbose</span><span class="p">,</span> <span class="n">max_depth</span><span class="p">):</span>
@@ -417,7 +419,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 
-<div class="viewcode-block" id="NotebookLoader"><a class="viewcode-back" href="../../pytb.html#pytb.importlib.NotebookLoader">[docs]</a><span class="k">class</span> <span class="nc">NotebookLoader</span><span class="p">(</span><span class="n">ModuleLoader</span><span class="p">):</span>
+<div class="viewcode-block" id="NotebookLoader"><a class="viewcode-back" href="../../modules/importlib.html#pytb.importlib.NotebookLoader">[docs]</a><span class="k">class</span> <span class="nc">NotebookLoader</span><span class="p">(</span><span class="n">ModuleLoader</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A :class:`ModuleLoader` that allows importing of jupyter Notebooks as python modules.</span>
 
@@ -493,7 +495,6 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">shell</span><span class="o">.</span><span class="n">user_ns</span> <span class="o">=</span> <span class="n">save_user_ns</span>
 
         <span class="k">return</span> <span class="n">module</span></div>
-
 </pre></div>
 
            </div>

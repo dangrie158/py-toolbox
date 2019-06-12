@@ -5,7 +5,6 @@
    :caption: Contents:
    :glob:
 
-   pytb
    modules/*
 
 
