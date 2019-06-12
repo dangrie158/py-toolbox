@@ -1,27 +1,37 @@
+import inspect
+
 from .config import current_config
 from .importlib import NoModuleCacheContext, NotebookLoader
 from .rdb import install_hook as install_rdb
 
-__all__ = ["io", "importlib", "config", "rdb", "init"]
+_initializer_frame = None
 
-_initialized = False
 
-def init(verbose=True):
+def init(verbose=True, reinitalisation_attempt_ok=False):
     """
     initialize the toolbox-subsystems using the current configuration
 
     :param verbose: print what this function is setting up
+    :param reinitalisation_attempt_ok: If False, a reinitialization attempt will 
+        raise a ``RuntimeError`` otherwise a reinitialization attempt is simply ignored.
+        If verbose is true, this will also log a warning
     """
-    global _initialized
-    
-    if _initialized:
-        raise RuntimeError('pytb toolkit is already initialized')
-    
+    global _initializer_frame
+
+    if _initializer_frame:
+        reinitialization_message = f"pytb toolkit was already initialized in {_initializer_frame.f_code.co_filename}:{_initializer_frame.f_code.co_name} on line {_initializer_frame.f_lineno}"
+        if reinitalisation_attempt_ok:
+            if verbose:
+                print(f"skipping initialization of toolbox. {reinitialization_message}")
+                return
+        else:
+            raise RuntimeError(reinitialization_message)
+
     config = current_config["init"]
 
     output = print if verbose else lambda x: None
 
-    if config.getboolean('disable_module_cache'):
+    if config.getboolean("disable_module_cache"):
         output("entering global pytb.NoModuleCacheContext")
         NoModuleCacheContext().__enter__()
     else:
@@ -38,5 +48,6 @@ def init(verbose=True):
         install_rdb()
     else:
         output("'install_rdb_hook' not set, skipping installation of hook")
-        
-    _initialized = True
+
+    # store the calling frame to output a useful message when attempting to reinitialize the toolkit
+    _initializer_frame = inspect.currentframe().f_back
