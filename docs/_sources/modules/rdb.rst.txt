@@ -30,4 +30,4 @@ API Documentation
     :exclude-members: Rdb
 
     .. autoclass:: pytb.rdb.Rdb
-        :members: _run_mainsafe, _runscript, _runmodule
+        :members: _run_mainsafe

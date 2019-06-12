@@ -21,4 +21,7 @@ setup(
         'Topic :: Utilities',
         'License :: OSI Approved :: MIT License',
     ],
+    entry_points = {
+        'console_scripts': ['pytb=pytb.__main__:main'],
+    }
 )

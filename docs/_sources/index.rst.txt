@@ -1,11 +1,11 @@
 .. include:: ../README.rst
 
 .. toctree::
-   :maxdepth: 4
-   :caption: Contents:
-   :glob:
+    :caption: Contents:
+    :glob:
 
-   modules/*
+    cli
+    modules/*
 
 
 Indices and tables
