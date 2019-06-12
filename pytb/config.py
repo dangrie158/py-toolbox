@@ -1,5 +1,7 @@
-from pathlib import Path
+import sys
 import configparser
+import logging
+from pathlib import Path
 
 """
 This module handles the .pytb.conf files
@@ -74,9 +76,18 @@ class Config(configparser.ConfigParser):
 
     def __init__(self, verbose=False):
         super().__init__()
-        self.reload(verbose)
+        self._logger = logging.getLogger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
+        if verbose:
+            self._logger.setLevel(logging.INFO)
+            handler = logging.StreamHandler(stream=sys.stdout)
+            handler.setLevel(logging.INFO)
+            self._logger.addHandler(handler)
 
-    def reload(self, verbose=False):
+        self.reload()
+
+    def reload(self):
         """
         load the configuration by initialising the default values from `Config.defaults` and then
         traversing all possible configuration files overwriting all newly found values
@@ -84,12 +95,10 @@ class Config(configparser.ConfigParser):
         self.read_dict(Config.defaults)
 
         potential_config_files = Config.get_config_file_locations()
-        if verbose:
-            print(f"looking for config files in {potential_config_files}")
+        self._logger.info(f"looking for config files in {potential_config_files}")
 
         files_loaded = self.read(potential_config_files)
-        if verbose:
-            print(f"loaded config from {files_loaded}")
+        self._logger.info(f"loaded config from {files_loaded}")
 
     def getlist(self, *args, **kwargs):
         """

@@ -1,12 +1,14 @@
 import sys
 import os
 import io
+import importlib
+import builtins
+import logging
 from contextlib import AbstractContextManager, contextmanager
 from importlib.abc import MetaPathFinder, Loader
 from importlib.machinery import ModuleSpec
-import importlib
-import builtins
 from contextlib import suppress
+
 from .config import current_config as pytb_config
 
 with suppress(Exception):
@@ -47,19 +49,25 @@ class ModuleLoader(AbstractContextManager):
     """
 
     def __init__(self, verbose=False):
-        self.is_verbose = verbose
+        self._logger = logging.getLogger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
+        if verbose:
+            self._logger.setLevel(logging.INFO)
+            handler = logging.StreamHandler(stream=sys.stdout)
+            handler.setLevel(logging.INFO)
+            self._logger.addHandler(handler)
 
     def find_spec(self, fullname, path, target=None):
-        if self.is_verbose:
-            print(f"looking for module {fullname} in path {path}")
+        # overwrite in child classes to do something sensible
+        self._logger.info(f"looking for module {fullname} in path {path}")
 
     def create_module(self, spec):
         # return None to indicate default module creation semantics
         return None
 
     def exec_module(self, module):
-        if self.is_verbose:
-            print(f"loading module {module.__name__}")
+        self._logger.info(f"loading module {module.__name__}")
 
     def __enter__(self):
         self.install()
@@ -170,8 +178,16 @@ class NoModuleCacheContext(AbstractContextManager):
             self.import_fun = import_fun
             self.module_stack = []
             self.reloaded_modules_in_last_call = []
-            self.is_verbose = verbose
             self.max_depth = max_depth
+
+            self._logger = logging.getLogger(
+                f"{self.__class__.__module__}.{self.__class__.__name__}"
+            )
+            if verbose:
+                self._logger.setLevel(logging.INFO)
+                handler = logging.StreamHandler(stream=sys.stdout)
+                handler.setLevel(logging.INFO)
+                self._logger.addHandler(handler)
 
         def __call__(self, name, globals=None, locals=None, fromlist=(), level=0):
             if level > 0:
@@ -233,8 +249,7 @@ class NoModuleCacheContext(AbstractContextManager):
             Clear the list of reloaded modules in this call. If this instance is verbose, 
             print the list of reloaded modules
             """
-            if self.is_verbose:
-                print(f"reloaded modules {self.reloaded_modules_in_last_call}")
+            self._logger.info(f"reloaded modules {self.reloaded_modules_in_last_call}")
             self.reloaded_modules_in_last_call.clear()
 
     def __init__(self, verbose=False, max_depth=None):
@@ -309,8 +324,7 @@ class NotebookLoader(ModuleLoader):
         if nb_path is None:
             return
 
-        if self.is_verbose:
-            print(f"Found notebook file {nb_path}")
+        self._logger.info(f"Found notebook file {nb_path}")
 
         return ModuleSpec(fullname, self, origin=nb_path)
 

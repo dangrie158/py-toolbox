@@ -1,6 +1,7 @@
 import argparse
 import sys
 import traceback
+import logging
 from pathlib import Path
 from pdb import Restart as PdbRestart
 
@@ -9,6 +10,8 @@ from .rdb import RdbClient, Rdb
 
 
 def main():
+    _logger = logging.getLogger()
+
     parser = argparse.ArgumentParser(
         prog="pytb", description="Python Toolkit CLI Interface"
     )
@@ -82,18 +85,20 @@ def main():
 
         elif args.function == "client":
             # create the client instance
-            print(f"trying to connect to remote debugger at {args.host}:{args.port}...")
+            _logger.info(
+                f"trying to connect to remote debugger at {args.host}:{args.port}..."
+            )
             try:
                 RdbClient(args.host, args.port)
-                print(f"connection to {args.host}:{args.port} closed.")
+                _logger.warn(f"connection to {args.host}:{args.port} closed.")
             except ConnectionRefusedError:
-                print(f"connection to {args.host}:{args.port} refused.")
+                _logger.error(f"connection to {args.host}:{args.port} refused.")
                 sys.exit(2)
 
         elif args.function == "server":
             mainpyfile = Path(args.script)
             if not args.run_as_module and not mainpyfile.exists():
-                print(f"Error: {args.script} does not exist")
+                _logger.error(f"{args.script} does not exist")
                 sys.exit(1)
 
             # overwrite the arguments with the user provided args
@@ -115,32 +120,34 @@ def main():
                         rdb._runscript(str(mainpyfile))
                     if rdb._user_requested_quit:
                         break
-                    print("The program finished and will be restarted")
+                    _logger.info("The program finished and will be restarted")
                 except PdbRestart:
-                    print("Restarting", mainpyfile, "with arguments:")
-                    print("\t" + " ".join(args.args))
+                    _logger.info(
+                        f"Restarting {mainpyfile} with arguments:\n\t {' '.join(args.args)}"
+                    )
                 except SystemExit:
                     # In most cases SystemExit does not warrant a post-mortem session.
-                    print("The program exited via sys.exit(). Exit status:", end=" ")
-                    print(sys.exc_info()[1])
+                    _logger.info(
+                        "The program exited via sys.exit(). Exit status:", end=" "
+                    )
+                    _logger.info(sys.exc_info()[1])
                 except SyntaxError:
                     traceback.print_exc()
                     rdb.do_quit(None)
                     sys.exit(1)
                 except:
                     traceback.print_exc()
-                    print("Uncaught exception. Entering post mortem debugging")
-                    print("Running 'cont' or 'step' will restart the program")
+                    _logger.error("Uncaught exception. Entering post mortem debugging")
+                    _logger.error("Running 'cont' or 'step' will restart the program")
                     t = sys.exc_info()[2]
                     rdb.interaction(None, t)
-                    print(
-                        "Post mortem debugger finished. The "
-                        + mainpyfile
-                        + " will be restarted"
+                    _logger.info(
+                        f"Post mortem debugger finished. The {mainpyfile} will be restarted"
                     )
 
             rdb.do_quit(None)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s")
     main()

@@ -5,6 +5,7 @@ import os
 import selectors
 import fcntl
 import argparse
+import logging
 from contextlib import contextmanager
 
 from .config import current_config as pytb_config
@@ -12,6 +13,8 @@ from .config import current_config as pytb_config
 """
 A remote debugging module for the python debugger pdb
 """
+
+_logger = logging.getLogger(__name__)
 
 
 class Rdb(pdb.Pdb):
@@ -50,13 +53,14 @@ class Rdb(pdb.Pdb):
         listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
         listen_socket.bind((host, port))
-        print(
-            f"Started Remote debug session on {host}:{port}. Waiting for connection...",
-            file=sys.__stderr__,
+        _logger.info(
+            f"Started Remote debug session on {host}:{port}. Waiting for connection..."
         )
         listen_socket.listen(1)
         connection, address = listen_socket.accept()
-        print(f"new connection from {address[0]}:{address[1]}", file=sys.__stderr__)
+        _logger.info(
+            f"new connection from {address[0]}:{address[1]}", file=sys.__stderr__
+        )
 
         self.connection_file = connection.makefile("rw")
         kwargs["stdin"] = self.connection_file

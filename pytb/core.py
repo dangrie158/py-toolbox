@@ -1,4 +1,5 @@
 import inspect
+import logging
 
 from .config import current_config
 from .importlib import NoModuleCacheContext, NotebookLoader
@@ -18,36 +19,41 @@ def init(verbose=True, reinitalisation_attempt_ok=False):
     """
     global _initializer_frame
 
+    _logger = logging.getLogger(__name__)
+    if verbose:
+        _logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setLevel(logging.INFO)
+        _logger.addHandler(handler)
     if _initializer_frame:
         reinitialization_message = f"pytb toolkit was already initialized in {_initializer_frame.f_code.co_filename}:{_initializer_frame.f_code.co_name} on line {_initializer_frame.f_lineno}"
         if reinitalisation_attempt_ok:
-            if verbose:
-                print(f"skipping initialization of toolbox. {reinitialization_message}")
-                return
+            _logger.warn(
+                f"skipping initialization of toolbox. {reinitialization_message}"
+            )
+            return
         else:
             raise RuntimeError(reinitialization_message)
 
     config = current_config["init"]
 
-    output = print if verbose else lambda x: None
-
     if config.getboolean("disable_module_cache"):
-        output("entering global pytb.NoModuleCacheContext")
+        _logger.info("entering global pytb.NoModuleCacheContext")
         NoModuleCacheContext().__enter__()
     else:
-        output("'disable_module_cache' not set, skipping global context")
+        _logger.info("'disable_module_cache' not set, skipping global context")
 
     if config.getboolean("install_notebook_loader"):
-        output("installing NotebookLoader into 'sys.meta_path'")
+        _logger.info("installing NotebookLoader into 'sys.meta_path'")
         NotebookLoader.install_hook()
     else:
-        output("'install_notebook_loader' not set, skipping installation of hook")
+        _logger.info("'install_notebook_loader' not set, skipping installation of hook")
 
     if config.getboolean("install_rdb_hook"):
-        output("installing RDB as default debugger in 'sys.breakpointhook'")
+        _logger.info("installing RDB as default debugger in 'sys.breakpointhook'")
         install_rdb()
     else:
-        output("'install_rdb_hook' not set, skipping installation of hook")
+        _logger.info("'install_rdb_hook' not set, skipping installation of hook")
 
     # store the calling frame to output a useful message when attempting to reinitialize the toolkit
     _initializer_frame = inspect.currentframe().f_back
