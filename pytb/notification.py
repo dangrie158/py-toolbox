@@ -24,10 +24,10 @@ Especially useful to supervise long-running tasks
 
 class Notify:
     """
-    A ``Notify`` object captures the basic configuration of how a notification should be handled.
+    A :class:`Notify` object captures the basic configuration of how a notification should be handled.
 
     The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled` are reenterable
-    context managers. Thus a single ``Notify`` object can be reused at several places and 
+    context managers. Thus a single :class:`Notify` object can be reused at several places and 
     different context-managers can be reused in the same context.
 
     Overwrite the method :meth:`_send_notification` in a derived class to specify a custom handling
@@ -57,6 +57,9 @@ class Notify:
         If you expect huge amounts of output during the execution of the monitored code, you can
         disable the capturing with the ``capture_output`` parameter.
 
+        To not spam you with notification when you stop the code execution yourself, ``KeyboardInterrupt`` 
+        exceptions will not trigger a notification.
+
         :param only_if_error: if the context manager exits cleanly, do not send any notifications
         :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it
             to the notification
@@ -80,6 +83,9 @@ class Notify:
         try:
             with output_handler:
                 yield self
+        except KeyboardInterrupt:
+            # do not send a notification when the user interrupts the code execution
+            raise
         except Exception as e:
             exception = e
 
@@ -297,7 +303,6 @@ class Notify:
             block_start = max(0, block_start - context_size)
             block_end = min(block_end + context_size, len(caller_file_lines))
 
-        # join the
         code_block_lines = caller_file_lines[block_start : block_end + 1]
         code_block = ""
 
@@ -315,7 +320,7 @@ class Notify:
 
 class NotifyViaEmail(Notify):
     """
-    A ``NotifyViaEmail`` object uses an SMTP connection to send notification via emails.
+    A :class:`NotifyViaEmail` object uses an SMTP connection to send notification via emails.
     The SMTP server is configured either at runtime or via the effective ``.pytb.config`` 
     files ``notify`` section.
 
