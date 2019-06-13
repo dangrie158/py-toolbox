@@ -166,29 +166,81 @@
 <span id="api-documentation"></span><h2>API Documentation<a class="headerlink" href="#module-pytb.notification" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="pytb.notification.Notify">
-<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">Notify</code><span class="sig-paren">(</span><em>email_addresses=None</em>, <em>smtp_host=None</em>, <em>smtp_port=None</em>, <em>smtp_ssl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">Notify</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object captures the basic configuration of how a notification should be handled.
-This includes the configuration of the SMTP connection to send emails which is either specified
-at runtime or loaded from the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> files <code class="docutils literal notranslate"><span class="pre">notify</span></code> section.</p>
-<p>The methods <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code> and <code class="xref py py-meth docutils literal notranslate"><span class="pre">when_stalled()</span></code> are reenterable
+<p>A <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object captures the basic configuration of how a notification should be handled.</p>
+<p>The methods <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>, <a class="reference internal" href="#pytb.notification.Notify.every" title="pytb.notification.Notify.every"><code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code></a> and <a class="reference internal" href="#pytb.notification.Notify.when_stalled" title="pytb.notification.Notify.when_stalled"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_stalled()</span></code></a> are reenterable
 context managers. Thus a single <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object can be reused at several places and 
 different context-managers can be reused in the same context.</p>
+<p>Overwrite the method <code class="xref py py-meth docutils literal notranslate"><span class="pre">_send_notification()</span></code> in a derived class to specify a custom handling
+of the notifications</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>task</strong> – A short description of the monitored block.</p>
+</dd>
+</dl>
+<dl class="method">
+<dt id="pytb.notification.Notify._get_caller_code_fragment">
+<code class="descname">_get_caller_code_fragment</code><span class="sig-paren">(</span><em>caller_frame</em>, <em>context_size=3</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify._get_caller_code_fragment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify._get_caller_code_fragment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a string representation of the code that called the Notify.
+The code block returned is selected using the following rules:</p>
+<ol class="arabic simple">
+<li><p>If the calling line is unindented, add a conext of 
+the surrounding <code class="docutils literal notranslate"><span class="pre">context_size</span></code> lines</p></li>
+<li><p>If the calling line is in any indentation level &gt; 0, 
+return all lines above and below that are also indented</p></li>
+</ol>
+<p>An indentet line is any line with a leading whitespace.</p>
+<p>Each line in the code block is prefixed with its linenumber within the file and
+the calling ine is marked with an arrow (‘—&gt;’)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>email_addresses</strong> – a list of email addresses. Each entry is a seperate recipient of 
-the notification send by this <code class="docutils literal notranslate"><span class="pre">Notify</span></code></p></li>
-<li><p><strong>smtp_host</strong> – The SMTP servers address used to send the notifications</p></li>
-<li><p><strong>smtp_port</strong> – The TCP port of the SMTP server</p></li>
-<li><p><strong>smtp_ssl</strong> – Whether or not to use SSL for the SMTP connection</p></li>
+<li><p><strong>caller_frame</strong> – The stack frame to use for code representation</p></li>
+<li><p><strong>context_size</strong> – Number of lines of context to add above and below if the calling code is unindented</p></li>
 </ul>
 </dd>
 </dl>
-<p>All parameters are initialized from the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> if they are passed <code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+<p>Example:</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">inspect</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="gp">... </span>    <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span>
+<span class="gp">... </span>    <span class="k">return</span> <span class="n">frame</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">frame</span> <span class="o">=</span> <span class="n">test</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">code_block</span> <span class="o">=</span> <span class="n">Notify</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">_get_caller_code_fragment</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">code_block</span><span class="p">)</span>
+<span class="go">     2: def test():</span>
+<span class="go">     3:     x = 1 + 1</span>
+<span class="go">     4:     frame = inspect.currentframe()</span>
+<span class="go">---&gt; 5:     y = 2 + 2</span>
+<span class="go">     6:     return frame</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="pytb.notification.Notify.every">
+<code class="descname">every</code><span class="sig-paren">(</span><em>interval</em>, <em>incremental_output=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify.every"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify.every" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send out notifications with a fixed interval to receive progress updates. 
+This contextmanager wraps a <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>, so it is guaranteed to send
+to notify at least once upon task completion or error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interval</strong> – <code class="docutils literal notranslate"><span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">datetime.timedelta</span></code> object representing the
+number of seconds between notifications</p></li>
+<li><p><strong>incremental_output</strong> – Only send incremental output summaries with each update. If <code class="docutils literal notranslate"><span class="pre">False</span></code>
+the complete captured output is sent each time</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="method">
 <dt id="pytb.notification.Notify.when_done">
-<code class="descname">when_done</code><span class="sig-paren">(</span><em>message</em>, <em>only_if_error=False</em>, <em>capture_output=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify.when_done"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify.when_done" title="Permalink to this definition">¶</a></dt>
+<code class="descname">when_done</code><span class="sig-paren">(</span><em>only_if_error=False</em>, <em>capture_output=True</em>, <em>caller_frame=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify.when_done"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify.when_done" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a context that, when exited, will send notifications. If an unhandled exception
 is raised during execution, a notification on the failure of the execution is sent.
 If the context exits cleanly, a notification is only sent if <code class="docutils literal notranslate"><span class="pre">only_if_error</span></code> is set to <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
@@ -198,11 +250,179 @@ disable the capturing with the <code class="docutils literal notranslate"><span 
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>message</strong> – A short description of the monitored block. Used as the subject of the notification</p></li>
 <li><p><strong>only_if_error</strong> – if the context manager exits cleanly, do not send any notifications</p></li>
 <li><p><strong>capture_output</strong> – capture all output to the <code class="docutils literal notranslate"><span class="pre">stdout</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> stream and append it
 to the notification</p></li>
+<li><p><strong>caller_frame</strong> – the stackframe to use when determining the code block for the notification. 
+If None, the stackframe of the line that called this function is used</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pytb.notification.Notify.when_stalled">
+<code class="descname">when_stalled</code><span class="sig-paren">(</span><em>timeout</em>, <em>capture_output=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify.when_stalled"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify.when_stalled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Monitor the output of the code bock to determine a possible stall of the execution.
+The execution is considered to be stalled when no new output is produced within
+<code class="docutils literal notranslate"><span class="pre">timeout</span></code> seconds.</p>
+<p>Only a single notification is sent each time a stall is detected. 
+If a stall notification was sent previously, new output will cause a notification to 
+be sent that the stall was resolved.</p>
+<p>Contrary to the <a class="reference internal" href="#pytb.notification.Notify.every" title="pytb.notification.Notify.every"><code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code></a> method, this does not wrap the context into a <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>
+function, thus it may never send a notification. If you want, you can simply use the same 
+<a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">Notify</span></code></a> to create mutliple contexts:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">notify</span><span class="o">.</span><span class="n">when_stalled</span><span class="p">(</span><span class="n">timeout</span><span class="p">),</span> <span class="n">notify</span><span class="o">.</span><span class="n">when_done</span><span class="p">():</span>
+    <span class="c1"># execute some potentially long-running process</span>
+</pre></div>
+</div>
+<p>However, it will always send a notification if the code block  exits with an exception.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>timeout</strong> – maximum number of seconds where no new output is produced
+before the code block is considiered to be stalled</p></li>
+<li><p><strong>capture_output</strong> – append all output to <code class="docutils literal notranslate"><span class="pre">stdout</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> to the notification</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pytb.notification.NotifyViaEmail">
+<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">NotifyViaEmail</code><span class="sig-paren">(</span><em>task</em>, <em>email_addresses=None</em>, <em>sender=None</em>, <em>smtp_host=None</em>, <em>smtp_port=None</em>, <em>smtp_ssl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#NotifyViaEmail"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.NotifyViaEmail" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">pytb.notification.Notify</span></code></a></p>
+<p>A <code class="docutils literal notranslate"><span class="pre">NotifyViaEmail</span></code> object uses an SMTP connection to send notification via emails.
+The SMTP server is configured either at runtime or via the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> 
+files <code class="docutils literal notranslate"><span class="pre">notify</span></code> section.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>email_addresses</strong> – a single email address or a list of addresses. Each entry is a seperate 
+recipient of the notification send by this <code class="docutils literal notranslate"><span class="pre">Notify</span></code></p></li>
+<li><p><strong>task</strong> – A short description of the monitored block.</p></li>
+<li><p><strong>sender</strong> – Sender name to use. If empty, use this machines FQDN</p></li>
+<li><p><strong>smtp_host</strong> – The SMTP servers address used to send the notifications</p></li>
+<li><p><strong>smtp_port</strong> – The TCP port of the SMTP server</p></li>
+<li><p><strong>smtp_ssl</strong> – Whether or not to use SSL for the SMTP connection</p></li>
+</ul>
+</dd>
+</dl>
+<p>All optional parameters are initialized from the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> if they are passed <code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+<dl class="attribute">
+<dt id="pytb.notification.NotifyViaEmail.message_template">
+<code class="descname">message_template</code><em class="property"> = 'Hello {recipient},\n{task} {reason}. {exinfo}\n\n{code_block}\n\nproduced output:\n\n{output}\n'</em><a class="headerlink" href="#pytb.notification.NotifyViaEmail.message_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>The message template used to create the message content.</p>
+<p>You can customize it by overwriting the instance-variable or by 
+deriving your custom <a class="reference internal" href="#pytb.notification.NotifyViaEmail" title="pytb.notification.NotifyViaEmail"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotifyViaEmail</span></code></a>.</p>
+<p>The following placeholders are available:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">task</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sender</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recipient</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reason</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">exinfo</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">code_block</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">output</span></code></p></li>
+</ul>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pytb.notification.NotifyViaEmail.subject_template">
+<code class="descname">subject_template</code><em class="property"> = '{task} on {sender} {reason}'</em><a class="headerlink" href="#pytb.notification.NotifyViaEmail.subject_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>The template that is used as subject line in the mail.</p>
+<p>You can customize it by the same techniques as the <a class="reference internal" href="#pytb.notification.NotifyViaEmail.message_template" title="pytb.notification.NotifyViaEmail.message_template"><code class="xref py py-attr docutils literal notranslate"><span class="pre">message_template</span></code></a>.
+The same placeholders are available.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pytb.notification.NotifyViaStream">
+<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">NotifyViaStream</code><span class="sig-paren">(</span><em>task</em>, <em>stream</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#NotifyViaStream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.NotifyViaStream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">pytb.notification.Notify</span></code></a></p>
+<p><a class="reference internal" href="#pytb.notification.NotifyViaStream" title="pytb.notification.NotifyViaStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotifyViaStream</span></code></a> will write string representations of notifications
+to the specified writable <code class="docutils literal notranslate"><span class="pre">stream</span></code>. This may be useful when the stream is
+a UNIX or TCP socket.</p>
+<p>Also useful when when the stream is a <code class="docutils literal notranslate"><span class="pre">io.StringIO</span></code> object for testing.</p>
+<p>The string representation of the notification can be configured via the
+<a class="reference internal" href="#pytb.notification.NotifyViaStream.notification_template" title="pytb.notification.NotifyViaStream.notification_template"><code class="xref py py-attr docutils literal notranslate"><span class="pre">notification_template</span></code></a> attribute which can be overwritten on a 
+per-instance basis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – A short description of the monitored block.</p></li>
+<li><p><strong>stream</strong> – A writable stream where notification should be written to.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="attribute">
+<dt id="pytb.notification.NotifyViaStream.notification_template">
+<code class="descname">notification_template</code><em class="property"> = '{task}\t{reason}\t{exinfo}\t{output}\n'</em><a class="headerlink" href="#pytb.notification.NotifyViaStream.notification_template" title="Permalink to this definition">¶</a></dt>
+<dd><p>The string that is written to the stream after replacing all placeholders
+with the notifications properties.</p>
+<p>The following placeholders are available</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">task</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reason</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">exinfo</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">code_block</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">output</span></code></p></li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="pytb.notification.Timer">
+<em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">Timer</code><span class="sig-paren">(</span><em>target</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Timer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Thread</span></code></p>
+<p>A gracefully stoppable Thread with means to run a target function 
+repedatley every <code class="docutils literal notranslate"><span class="pre">X</span></code> seconds.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – the target function that will be executed in the thread</p></li>
+<li><p><strong>*args</strong> – additional positional parameters passed to the target function</p></li>
+<li><p><strong>**kwargs</strong> – additional keyword parameters passed to the target function</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="pytb.notification.Timer.call_every">
+<code class="descname">call_every</code><span class="sig-paren">(</span><em>interval</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Timer.call_every"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Timer.call_every" title="Permalink to this definition">¶</a></dt>
+<dd><p>start the repeated execution of the target function every <code class="docutils literal notranslate"><span class="pre">interval</span></code> seconds.
+The target function is first invoked after waiting the interval. If the thread 
+is stopped before the first interval passed, the target function may never be called</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>interval</strong> – <code class="docutils literal notranslate"><span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">datetime.timedelta</span></code> object representing the
+number of seconds between invocations of the target function</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="pytb.notification.Timer.run">
+<code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Timer.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Timer.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method representing the thread’s activity.</p>
+<p>You may override this method in a subclass. The standard run() method
+invokes the callable object passed to the object’s constructor as the
+target argument, if any, with sequential and keyword arguments taken
+from the args and kwargs arguments, respectively.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pytb.notification.Timer.stop">
+<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Timer.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Timer.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>schedule the thread to stop. This is only meant to be used to stop
+a repeated scheduling of the target funtion started via <a class="reference internal" href="#pytb.notification.Timer.call_every" title="pytb.notification.Timer.call_every"><code class="xref py py-meth docutils literal notranslate"><span class="pre">call_every()</span></code></a>
+but will not interrupt a long-running target function</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – if the thread was not started via <a class="reference internal" href="#pytb.notification.Timer.call_every" title="pytb.notification.Timer.call_every"><code class="xref py py-meth docutils literal notranslate"><span class="pre">call_every()</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>

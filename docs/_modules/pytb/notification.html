@@ -153,10 +153,17 @@
 <span></span><span class="kn">import</span> <span class="nn">smtplib</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">linecache</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">socket</span> <span class="k">import</span> <span class="n">getfqdn</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">nullcontext</span>
 <span class="kn">from</span> <span class="nn">email.message</span> <span class="k">import</span> <span class="n">EmailMessage</span>
 <span class="kn">from</span> <span class="nn">dataclasses</span> <span class="k">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>
+<span class="kn">from</span> <span class="nn">textwrap</span> <span class="k">import</span> <span class="n">dedent</span>
 
 <span class="kn">from</span> <span class="nn">.config</span> <span class="k">import</span> <span class="n">current_config</span>
 <span class="kn">from</span> <span class="nn">.io</span> <span class="k">import</span> <span class="n">mirrored_stdstreams</span>
@@ -170,30 +177,363 @@
 <div class="viewcode-block" id="Notify"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify">[docs]</a><span class="k">class</span> <span class="nc">Notify</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A ``Notify`` object captures the basic configuration of how a notification should be handled.</span>
-<span class="sd">    This includes the configuration of the SMTP connection to send emails which is either specified</span>
-<span class="sd">    at runtime or loaded from the effective ``.pytb.config`` files ``notify`` section.</span>
 
 <span class="sd">    The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled` are reenterable</span>
 <span class="sd">    context managers. Thus a single ``Notify`` object can be reused at several places and </span>
 <span class="sd">    different context-managers can be reused in the same context.</span>
 
-<span class="sd">    :param email_addresses: a list of email addresses. Each entry is a seperate recipient of </span>
-<span class="sd">        the notification send by this ``Notify``</span>
-<span class="sd">    :param smtp_host: The SMTP servers address used to send the notifications</span>
-<span class="sd">    :param smtp_port: The TCP port of the SMTP server</span>
-<span class="sd">    :param smtp_ssl: Whether or not to use SSL for the SMTP connection</span>
+<span class="sd">    Overwrite the method :meth:`_send_notification` in a derived class to specify a custom handling</span>
+<span class="sd">    of the notifications</span>
 
-<span class="sd">    All parameters are initialized from the effective ``.pytb.config`` if they are passed ``None``</span>
+<span class="sd">    :param task: A short description of the monitored block.</span>
+<span class="sd">    </span>
+<span class="sd">    .. automethod:: _get_caller_code_fragment</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">email_addresses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">smtp_ssl</span><span class="o">=</span><span class="kc">None</span>
-    <span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span>
             <span class="n">f</span><span class="s2">&quot;</span><span class="si">{self.__class__.__module__}</span><span class="s2">.</span><span class="si">{self.__class__.__name__}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">task</span> <span class="o">=</span> <span class="n">task</span>
+
+<div class="viewcode-block" id="Notify.when_done"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify.when_done">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">only_if_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">caller_frame</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a context that, when exited, will send notifications. If an unhandled exception</span>
+<span class="sd">        is raised during execution, a notification on the failure of the execution is sent.</span>
+<span class="sd">        If the context exits cleanly, a notification is only sent if ``only_if_error`` is set to ``False``</span>
+
+<span class="sd">        By default, all output to the ``stdio`` and ``stderr`` streams is captured and sent in the notification.</span>
+<span class="sd">        If you expect huge amounts of output during the execution of the monitored code, you can</span>
+<span class="sd">        disable the capturing with the ``capture_output`` parameter.</span>
+
+<span class="sd">        :param only_if_error: if the context manager exits cleanly, do not send any notifications</span>
+<span class="sd">        :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it</span>
+<span class="sd">            to the notification</span>
+<span class="sd">        :param caller_frame: the stackframe to use when determining the code block for the notification. </span>
+<span class="sd">            If None, the stackframe of the line that called this function is used</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;entering when done context&quot;</span><span class="p">)</span>
+
+        <span class="c1"># if called from user code, the calling frame is unspecified. save it fur future reference</span>
+        <span class="k">if</span> <span class="n">caller_frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`</span>
+            <span class="n">caller_frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span>
+
+        <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">output_handler</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">)</span> <span class="k">if</span> <span class="n">capture_output</span> <span class="k">else</span> <span class="n">nullcontext</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="n">exception</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">exception</span> <span class="o">=</span> <span class="n">e</span>
+
+        <span class="n">output</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">capture_output</span>
+            <span class="k">else</span> <span class="s2">&quot;&lt;output capturing disabled&gt;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">only_if_error</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="n">f</span><span class="s2">&quot;Notification context left without error. Not firing notification&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">elif</span> <span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">exception</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;done&quot;</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Notify.every"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify.every">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">every</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">,</span> <span class="n">incremental_output</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send out notifications with a fixed interval to receive progress updates. </span>
+<span class="sd">        This contextmanager wraps a :meth:`when_done`, so it is guaranteed to send</span>
+<span class="sd">        to notify at least once upon task completion or error.</span>
+
+<span class="sd">        :param interval: ``float``, ``int`` or ``datetime.timedelta`` object representing the</span>
+<span class="sd">            number of seconds between notifications</span>
+<span class="sd">        :param incremental_output: Only send incremental output summaries with each update. If ``False``</span>
+<span class="sd">            the complete captured output is sent each time</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`</span>
+        <span class="n">caller_frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span>
+
+        <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">output_handler</span> <span class="o">=</span> <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">send_progress</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;sending out scheduled notifications&quot;</span><span class="p">)</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+            <span class="c1"># clear the output buffer between progress notification</span>
+            <span class="c1"># if we only should send incremental updates of the output</span>
+            <span class="k">if</span> <span class="n">incremental_output</span><span class="p">:</span>
+                <span class="n">output_buffer</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;progress update&quot;</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
+
+        <span class="n">progress_sender</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="n">send_progress</span><span class="p">)</span>
+        <span class="n">progress_sender</span><span class="o">.</span><span class="n">call_every</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">when_done</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">caller_frame</span><span class="o">=</span><span class="n">caller_frame</span><span class="p">):</span>
+                <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># stop the scheduled sending of progress updates</span>
+            <span class="n">progress_sender</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Notify.when_stalled"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify.when_stalled">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">when_stalled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Monitor the output of the code bock to determine a possible stall of the execution.</span>
+<span class="sd">        The execution is considered to be stalled when no new output is produced within</span>
+<span class="sd">        ``timeout`` seconds. </span>
+<span class="sd">        </span>
+<span class="sd">        Only a single notification is sent each time a stall is detected. </span>
+<span class="sd">        If a stall notification was sent previously, new output will cause a notification to </span>
+<span class="sd">        be sent that the stall was resolved.</span>
+
+<span class="sd">        Contrary to the :meth:`every` method, this does not wrap the context into a :meth:`when_done`</span>
+<span class="sd">        function, thus it may never send a notification. If you want, you can simply use the same </span>
+<span class="sd">        :class:`Notify` to create mutliple contexts:</span>
+<span class="sd">        </span>
+<span class="sd">        .. code-block::</span>
+
+<span class="sd">            with notify.when_stalled(timeout), notify.when_done():</span>
+<span class="sd">                # execute some potentially long-running process</span>
+
+<span class="sd">        However, it will always send a notification if the code block  exits with an exception.</span>
+
+<span class="sd">        :param timeout: maximum number of seconds where no new output is produced</span>
+<span class="sd">            before the code block is considiered to be stalled</span>
+<span class="sd">        :param capture_output: append all output to ``stdout`` and ``stderr`` to the notification</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">caller_frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span>
+
+        <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="n">output_handler</span> <span class="o">=</span> <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">)</span>
+
+        <span class="n">last_output</span> <span class="o">=</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+        <span class="n">was_stalled</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">def</span> <span class="nf">check_stalled</span><span class="p">():</span>
+            <span class="k">nonlocal</span> <span class="n">last_output</span><span class="p">,</span> <span class="n">was_stalled</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Checking for stalled code block&quot;</span><span class="p">)</span>
+
+            <span class="n">output</span> <span class="o">=</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+            <span class="n">output_in_notification</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">capture_output</span>
+                <span class="k">else</span> <span class="s2">&quot;&lt;output capturing disabled&gt;&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">output</span> <span class="o">==</span> <span class="n">last_output</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">was_stalled</span><span class="p">:</span>
+                <span class="c1"># we&#39;re probably stalled. send out a notification</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;probably stalled&quot;</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output_in_notification</span>
+                <span class="p">)</span>
+                <span class="n">was_stalled</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="n">was_stalled</span><span class="p">:</span>
+                <span class="c1"># wrong alert previously, send a notification that everything is ok again</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;no longer stalled&quot;</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output_in_notification</span>
+                <span class="p">)</span>
+                <span class="n">was_stalled</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="n">last_output</span> <span class="o">=</span> <span class="n">output</span>
+
+        <span class="n">stall_checker</span> <span class="o">=</span> <span class="n">Timer</span><span class="p">(</span><span class="n">check_stalled</span><span class="p">)</span>
+        <span class="n">stall_checker</span><span class="o">.</span><span class="n">call_every</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">when_done</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">capture_output</span><span class="p">,</span> <span class="n">caller_frame</span><span class="o">=</span><span class="n">caller_frame</span><span class="p">):</span>
+                <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># stop the scheduled sending of progress updates</span>
+            <span class="n">stall_checker</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle the actual notification. Overwrite this method to specify your own Notifier</span>
+<span class="sd">        over any communication mechanism you may desire.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Notify._get_caller_code_fragment"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify._get_caller_code_fragment">[docs]</a>    <span class="k">def</span> <span class="nf">_get_caller_code_fragment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">context_size</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a string representation of the code that called the Notify.</span>
+<span class="sd">        The code block returned is selected using the following rules:</span>
+<span class="sd">        </span>
+<span class="sd">        1. If the calling line is unindented, add a conext of </span>
+<span class="sd">           the surrounding ``context_size`` lines</span>
+<span class="sd">        2. If the calling line is in any indentation level &gt; 0, </span>
+<span class="sd">           return all lines above and below that are also indented</span>
+<span class="sd">            </span>
+<span class="sd">        An indentet line is any line with a leading whitespace.</span>
+
+<span class="sd">        Each line in the code block is prefixed with its linenumber within the file and</span>
+<span class="sd">        the calling ine is marked with an arrow (&#39;---&gt;&#39;)</span>
+
+<span class="sd">        :param caller_frame: The stack frame to use for code representation</span>
+<span class="sd">        :param context_size: Number of lines of context to add above and below if the calling code is unindented</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        .. testsetup:: *</span>
+
+<span class="sd">            from pytb.notification import Notify</span>
+
+<span class="sd">        .. doctest::</span>
+
+<span class="sd">            &gt;&gt;&gt; import inspect</span>
+<span class="sd">            &gt;&gt;&gt; def test():</span>
+<span class="sd">            ...     x = 1 + 1</span>
+<span class="sd">            ...     frame = inspect.currentframe()</span>
+<span class="sd">            ...     y = 2 + 2</span>
+<span class="sd">            ...     return frame</span>
+<span class="sd">            &gt;&gt;&gt; frame = test()</span>
+<span class="sd">            &gt;&gt;&gt; code_block = Notify(&quot;test&quot;)._get_caller_code_fragment(frame)</span>
+<span class="sd">            &gt;&gt;&gt; print(code_block)</span>
+<span class="sd">                 2: def test():</span>
+<span class="sd">                 3:     x = 1 + 1</span>
+<span class="sd">                 4:     frame = inspect.currentframe()</span>
+<span class="sd">            ---&gt; 5:     y = 2 + 2</span>
+<span class="sd">                 6:     return frame</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">caller_frame</span><span class="o">.</span><span class="n">f_code</span><span class="o">.</span><span class="n">co_filename</span>
+        <span class="n">lineno</span> <span class="o">=</span> <span class="n">caller_frame</span><span class="o">.</span><span class="n">f_lineno</span>
+        <span class="n">caller_file_lines</span> <span class="o">=</span> <span class="n">linecache</span><span class="o">.</span><span class="n">getlines</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">get_indentation</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+            <span class="n">level</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">char</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">char</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">):</span>
+                    <span class="n">level</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">level</span>
+            <span class="k">return</span> <span class="n">level</span>
+
+        <span class="n">levels</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_indentation</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">caller_file_lines</span><span class="p">]</span>
+
+        <span class="c1"># -1 from lineno because line numbers are 1-indexed</span>
+        <span class="n">block_start</span> <span class="o">=</span> <span class="n">block_end</span> <span class="o">=</span> <span class="n">lineno</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="c1"># move the start and end line to the block boundaries</span>
+        <span class="c1"># (next occurence of unindented line)</span>
+        <span class="k">while</span> <span class="n">block_start</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">levels</span><span class="p">[</span><span class="n">block_start</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># move up a line</span>
+            <span class="n">block_start</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">block_end</span> <span class="ow">and</span> <span class="n">levels</span><span class="p">[</span><span class="n">block_end</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># move down a line</span>
+            <span class="n">block_end</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="n">block_start</span> <span class="o">==</span> <span class="n">block_end</span><span class="p">:</span>
+            <span class="c1"># add some context, otherwise the caller</span>
+            <span class="c1"># would only be a single line</span>
+            <span class="n">block_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">block_start</span> <span class="o">-</span> <span class="n">context_size</span><span class="p">)</span>
+            <span class="n">block_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">block_end</span> <span class="o">+</span> <span class="n">context_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">caller_file_lines</span><span class="p">))</span>
+
+        <span class="c1"># join the</span>
+        <span class="n">code_block_lines</span> <span class="o">=</span> <span class="n">caller_file_lines</span><span class="p">[</span><span class="n">block_start</span> <span class="p">:</span> <span class="n">block_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">code_block</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># count the number of characters that are needed to represent</span>
+        <span class="c1"># the biggest possible line number</span>
+        <span class="n">space_for_linenos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">caller_file_lines</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">block_lineno</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">code_block_lines</span><span class="p">):</span>
+            <span class="n">cur_lineno</span> <span class="o">=</span> <span class="n">block_start</span> <span class="o">+</span> <span class="n">block_lineno</span> <span class="o">+</span> <span class="mi">2</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;---&gt;&quot;</span> <span class="k">if</span> <span class="n">cur_lineno</span> <span class="o">==</span> <span class="n">lineno</span> <span class="k">else</span> <span class="s2">&quot;    &quot;</span>
+            <span class="n">code_block</span> <span class="o">+=</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{prefix}</span><span class="s2"> {str(cur_lineno).ljust(space_for_linenos)}: </span><span class="si">{line}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># remove any training whitespaces and newlines</span>
+        <span class="k">return</span> <span class="n">code_block</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="NotifyViaEmail"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.NotifyViaEmail">[docs]</a><span class="k">class</span> <span class="nc">NotifyViaEmail</span><span class="p">(</span><span class="n">Notify</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A ``NotifyViaEmail`` object uses an SMTP connection to send notification via emails.</span>
+<span class="sd">    The SMTP server is configured either at runtime or via the effective ``.pytb.config`` </span>
+<span class="sd">    files ``notify`` section.</span>
+
+<span class="sd">    :param email_addresses: a single email address or a list of addresses. Each entry is a seperate </span>
+<span class="sd">        recipient of the notification send by this ``Notify``</span>
+<span class="sd">    :param task: A short description of the monitored block.</span>
+<span class="sd">    :param sender: Sender name to use. If empty, use this machines FQDN</span>
+<span class="sd">    :param smtp_host: The SMTP servers address used to send the notifications</span>
+<span class="sd">    :param smtp_port: The TCP port of the SMTP server</span>
+<span class="sd">    :param smtp_ssl: Whether or not to use SSL for the SMTP connection</span>
+
+<span class="sd">    All optional parameters are initialized from the effective ``.pytb.config`` if they are passed ``None``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">message_template</span> <span class="o">=</span> <span class="n">dedent</span><span class="p">(</span>
+        <span class="sd">&quot;&quot;&quot;\</span>
+<span class="sd">        Hello {recipient},</span>
+<span class="sd">        {task} {reason}. {exinfo}</span>
+
+<span class="sd">        {code_block}</span>
+
+<span class="sd">        produced output:</span>
+
+<span class="sd">        {output}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The message template used to create the message content. </span>
+
+<span class="sd">    You can customize it by overwriting the instance-variable or by </span>
+<span class="sd">    deriving your custom :class:`NotifyViaEmail`. </span>
+<span class="sd">    </span>
+<span class="sd">    The following placeholders are available:</span>
+
+<span class="sd">    - ``task``</span>
+<span class="sd">    - ``sender``</span>
+<span class="sd">    - ``recipient``</span>
+<span class="sd">    - ``reason``</span>
+<span class="sd">    - ``exinfo``</span>
+<span class="sd">    - ``code_block``</span>
+<span class="sd">    - ``output``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">subject_template</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{task}</span><span class="s2"> on </span><span class="si">{sender}</span><span class="s2"> </span><span class="si">{reason}</span><span class="s2">&quot;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The template that is used as subject line in the mail.</span>
+
+<span class="sd">    You can customize it by the same techniques as the :attr:`message_template`.</span>
+<span class="sd">    The same placeholders are available.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">task</span><span class="p">,</span>
+        <span class="n">email_addresses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">sender</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">smtp_host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">smtp_port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">smtp_ssl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
         <span class="n">notify_config</span> <span class="o">=</span> <span class="n">current_config</span><span class="p">[</span><span class="s2">&quot;notify&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">email_addresses</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="n">email_addresses</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">email_addresses</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">email_addresses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">email_addresses</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">&quot;email_addresses&quot;</span><span class="p">)</span>
 
@@ -205,6 +545,12 @@
 
         <span class="k">if</span> <span class="n">smtp_ssl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">smtp_ssl</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s2">&quot;smtp_ssl&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">sender</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sender</span> <span class="o">=</span> <span class="n">notify_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sender&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sender</span><span class="p">:</span>
+            <span class="n">sender</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;notify@{getfqdn()}&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sender</span> <span class="o">=</span> <span class="n">sender</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">email_addresses</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -220,66 +566,51 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">smtp_host</span> <span class="o">=</span> <span class="n">smtp_host</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">smtp_port</span> <span class="o">=</span> <span class="n">smtp_port</span>
 
-<div class="viewcode-block" id="Notify.when_done"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify.when_done">[docs]</a>    <span class="nd">@contextmanager</span>
-    <span class="k">def</span> <span class="nf">when_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">only_if_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Create a context that, when exited, will send notifications. If an unhandled exception</span>
-<span class="sd">        is raised during execution, a notification on the failure of the execution is sent.</span>
-<span class="sd">        If the context exits cleanly, a notification is only sent if ``only_if_error`` is set to ``False``</span>
-
-<span class="sd">        By default, all output to the ``stdio`` and ``stderr`` streams is captured and sent in the notification.</span>
-<span class="sd">        If you expect huge amounts of output during the execution of the monitored code, you can</span>
-<span class="sd">        disable the capturing with the ``capture_output`` parameter.</span>
-
-<span class="sd">        :param message: A short description of the monitored block. Used as the subject of the notification</span>
-<span class="sd">        :param only_if_error: if the context manager exits cleanly, do not send any notifications</span>
-<span class="sd">        :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it</span>
-<span class="sd">            to the notification</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;entering when done context&quot;</span><span class="p">)</span>
-
-        <span class="c1"># we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`</span>
-        <span class="n">caller_frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">()</span><span class="o">.</span><span class="n">f_back</span><span class="o">.</span><span class="n">f_back</span>
-
-        <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
-        <span class="n">output_handler</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">mirrored_stdstreams</span><span class="p">(</span><span class="n">output_buffer</span><span class="p">)</span> <span class="k">if</span> <span class="n">capture_output</span> <span class="k">else</span> <span class="n">nullcontext</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_create_message</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">recipient</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">code_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_caller_code_fragment</span><span class="p">(</span><span class="n">caller_frame</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;&lt;No output produced&gt;&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span> <span class="k">else</span> <span class="n">output</span>
+        <span class="n">exinfo</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">The following exception occurred:</span><span class="se">\n</span><span class="s2">{str(exception)}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="k">if</span> <span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">&quot;&quot;</span>
         <span class="p">)</span>
 
-        <span class="n">exception</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">subject</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">sender</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sender</span><span class="p">,</span>
+            <span class="n">recipient</span><span class="o">=</span><span class="n">recipient</span><span class="p">,</span>
+            <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+            <span class="n">exinfo</span><span class="o">=</span><span class="n">exinfo</span><span class="p">,</span>
+            <span class="n">code_block</span><span class="o">=</span><span class="n">code_block</span><span class="p">,</span>
+            <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="k">try</span><span class="p">:</span>
-            <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
-                <span class="k">yield</span>
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">exception</span> <span class="o">=</span> <span class="n">e</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">message_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">sender</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sender</span><span class="p">,</span>
+            <span class="n">recipient</span><span class="o">=</span><span class="n">recipient</span><span class="p">,</span>
+            <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+            <span class="n">exinfo</span><span class="o">=</span><span class="n">exinfo</span><span class="p">,</span>
+            <span class="n">code_block</span><span class="o">=</span><span class="n">code_block</span><span class="p">,</span>
+            <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+        <span class="p">)</span>
 
-        <span class="n">output</span> <span class="o">=</span> <span class="n">output_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">EmailMessage</span><span class="p">()</span>
+        <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;Subject&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">subject</span>
+        <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;From&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sender</span>
+        <span class="n">msg</span><span class="p">[</span><span class="s2">&quot;To&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recipient</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">set_content</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">set_type</span><span class="p">(</span><span class="s2">&quot;text/plain&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">msg</span>
 
-        <span class="k">if</span> <span class="n">exception</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">only_if_error</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                <span class="n">f</span><span class="s2">&quot;Notification context left without error. Not firing notification&quot;</span>
-            <span class="p">)</span>
-            <span class="k">return</span>
-        <span class="k">elif</span> <span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">send_error</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
-            <span class="k">raise</span> <span class="n">exception</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">send_success</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_create_message</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">email_addresses</span>
+        <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">every</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
-        <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">when_stalled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-        <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">send_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">send_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">output_buffer</span><span class="p">,</span> <span class="n">exception</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">smtp_host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">smtp_port</span><span class="p">)</span> <span class="k">as</span> <span class="n">smtp</span><span class="p">:</span>
@@ -290,6 +621,122 @@
                 <span class="c1"># we do not want to disrupt the user program if we fail to send the message</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;error during sending of notification&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
                 <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="NotifyViaStream"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.NotifyViaStream">[docs]</a><span class="k">class</span> <span class="nc">NotifyViaStream</span><span class="p">(</span><span class="n">Notify</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :class:`NotifyViaStream` will write string representations of notifications</span>
+<span class="sd">    to the specified writable ``stream``. This may be useful when the stream is</span>
+<span class="sd">    a UNIX or TCP socket. </span>
+<span class="sd">    </span>
+<span class="sd">    Also useful when when the stream is a ``io.StringIO`` object for testing.</span>
+
+<span class="sd">    The string representation of the notification can be configured via the</span>
+<span class="sd">    :attr:`notification_template` attribute which can be overwritten on a </span>
+<span class="sd">    per-instance basis.</span>
+
+<span class="sd">    :param task: A short description of the monitored block.</span>
+<span class="sd">    :param stream: A writable stream where notification should be written to.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">notification_template</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{task}</span><span class="se">\t</span><span class="si">{reason}</span><span class="se">\t</span><span class="si">{exinfo}</span><span class="se">\t</span><span class="si">{output}</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The string that is written to the stream after replacing all placeholders</span>
+<span class="sd">    with the notifications properties.</span>
+
+<span class="sd">    The following placeholders are available</span>
+
+<span class="sd">    - ``task``</span>
+<span class="sd">    - ``reason``</span>
+<span class="sd">    - ``exinfo``</span>
+<span class="sd">    - ``code_block``</span>
+<span class="sd">    - ``output``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">stream</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span> <span class="o">=</span> <span class="n">stream</span>
+
+    <span class="k">def</span> <span class="nf">_send_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">caller_frame</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">exception</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">code_block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_caller_code_fragment</span><span class="p">(</span><span class="n">caller_frame</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;&lt;No output produced&gt;&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">output</span> <span class="k">else</span> <span class="n">output</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="n">exinfo</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;str(exception)&quot;</span> <span class="k">if</span> <span class="n">exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">notification_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+            <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+            <span class="n">exinfo</span><span class="o">=</span><span class="n">exinfo</span><span class="p">,</span>
+            <span class="n">code_block</span><span class="o">=</span><span class="n">code_block</span><span class="p">,</span>
+            <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">content</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Timer"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Timer">[docs]</a><span class="k">class</span> <span class="nc">Timer</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A gracefully stoppable Thread with means to run a target function </span>
+<span class="sd">    repedatley every ``X`` seconds.</span>
+
+<span class="sd">    :param target: the target function that will be executed in the thread</span>
+<span class="sd">    :param \*args: additional positional parameters passed to the target function</span>
+<span class="sd">    :param \**kwargs: additional keyword parameters passed to the target function</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Timer.stop"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Timer.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        schedule the thread to stop. This is only meant to be used to stop</span>
+<span class="sd">        a repeated scheduling of the target funtion started via :meth:`call_every`</span>
+<span class="sd">        but will not interrupt a long-running target function </span>
+
+<span class="sd">        :raises RuntimeError: if the thread was not started via :meth:`call_every`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;thread not started via &#39;run_every&#39; function&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Timer.call_every"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Timer.call_every">[docs]</a>    <span class="k">def</span> <span class="nf">call_every</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">interval</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        start the repeated execution of the target function every ``interval`` seconds.</span>
+<span class="sd">        The target function is first invoked after waiting the interval. If the thread </span>
+<span class="sd">        is stopped before the first interval passed, the target function may never be called</span>
+
+<span class="sd">        :param interval: ``float``, ``int`` or ``datetime.timedelta`` object representing the</span>
+<span class="sd">            number of seconds between invocations of the target function </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># make sure the interval is number representing fractional seconds</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span> <span class="ow">is</span> <span class="n">timedelta</span><span class="p">:</span>
+            <span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Timer.run"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Timer.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># this thread was not started via the ``call_every()``</span>
+            <span class="c1"># method, exit after the first execution</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
+                <span class="c1"># check if we got stopped while sleeping</span>
+                <span class="c1"># in this case, do not run the target again</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="k">break</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_event</span> <span class="o">=</span> <span class="kc">None</span></div></div>
 </pre></div>
 
            </div>
