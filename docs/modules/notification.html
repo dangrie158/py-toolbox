@@ -88,7 +88,13 @@
 <li class="toctree-l1"><a class="reference internal" href="importlib.html">pytb.importlib module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="io.html">pytb.io module</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">pytb.notification module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#setup-monitoring-for-your-long-running-tasks">Setup monitoring for your long running tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setup-monitoring-for-your-long-running-tasks">Setup monitoring for your long running tasks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#concrete-notifier-implementations">Concrete Notifier implementations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notify-when-a-code-block-exits-on-success-or-failure">Notify when a code block exits (on success or failure)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#periodic-notifications-on-the-progress-of-long-running-tasks">Periodic Notifications on the Progress of long-running Tasks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notify-about-stalled-code-blocks">Notify about stalled code blocks</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#module-pytb.notification">API Documentation</a></li>
 </ul>
 </li>
@@ -161,6 +167,105 @@
 <h1>pytb.notification module<a class="headerlink" href="#pytb-notification-module" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="setup-monitoring-for-your-long-running-tasks">
 <h2>Setup monitoring for your long running tasks<a class="headerlink" href="#setup-monitoring-for-your-long-running-tasks" title="Permalink to this headline">¶</a></h2>
+<p>Automatic task progress and monitoring notification via E-Mail.
+Especially useful to supervise long-running code blocks.</p>
+<div class="section" id="concrete-notifier-implementations">
+<h3>Concrete Notifier implementations<a class="headerlink" href="#concrete-notifier-implementations" title="Permalink to this headline">¶</a></h3>
+<p>The base <code class="xref py py-class docutils literal notranslate"><span class="pre">Notify</span></code> class is an abstract class that implements
+the general notification management. However, it does not define how
+notifications are delivered.</p>
+<p>The Framework implements different derived classes with a concrete
+implementation of the abstract <code class="xref py py-meth docutils literal notranslate"><span class="pre">Notify._send_notification()</span></code>
+method:</p>
+<dl class="simple">
+<dt><code class="xref py py-class docutils literal notranslate"><span class="pre">NotifyViaEmail</span></code></dt><dd><p>Send notifications as emails using an external SMTP server.</p>
+</dd>
+<dt><code class="xref py py-class docutils literal notranslate"><span class="pre">NotifyViaStream</span></code></dt><dd><p>Write notifications as string to a stream.
+The stream can be any writable object (e.g. a TCP or UNIX socket
+or a <cite>io.StringIO</cite> instance). When using pythons <a class="reference external" href="https://docs.python.org/3/library/socket.html#module-socket">socket</a>
+module, use the sockets <code class="xref py py-meth docutils literal notranslate"><span class="pre">makefile()</span></code> method to get a writable stream.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="notify-when-a-code-block-exits-on-success-or-failure">
+<h3>Notify when a code block exits (on success or failure)<a class="headerlink" href="#notify-when-a-code-block-exits-on-success-or-failure" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code> method can be used to be notified when a code block
+exits. This method will always send exactly one notification when the task
+exits (gracefully or when a unhandeled exception is thrown) except if the
+<code class="docutils literal notranslate"><span class="pre">only_if_error</span></code> parameter is <code class="docutils literal notranslate"><span class="pre">True</span></code>. In this case a graceful exit will
+not send any notification.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">notify</span> <span class="o">=</span> <span class="n">NotifyViaStream</span><span class="p">(</span><span class="s2">&quot;testtask&quot;</span><span class="p">,</span> <span class="n">stream</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># set a custom template used to stringify the notifications</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">notify</span><span class="o">.</span><span class="n">notification_template</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{task}</span><span class="s2"> </span><span class="si">{reason}</span><span class="s2"> </span><span class="si">{exinfo}</span><span class="s2">&quot;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">notify</span><span class="o">.</span><span class="n">when_done</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="c1"># potentially long-running process</span>
+<span class="gp">... </span>    <span class="k">pass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+<span class="go">&#39;testtask done &#39;</span>
+</pre></div>
+</div>
+<p>When an exception occurs, the <code class="docutils literal notranslate"><span class="pre">{exinfo}</span></code> placeholder is populated
+with the exception message. The exception is reraised after the notification
+is sent and the context exited.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">notify</span><span class="o">.</span><span class="n">when_done</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;ungraceful exit occurred&quot;</span><span class="p">)</span>
+<span class="gt">Traceback (most recent call last):</span>
+    <span class="o">...</span>
+<span class="gr">Exception</span>: <span class="n">ungraceful exit occurred</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+<span class="go">&#39;testtask failed str(exception)&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="periodic-notifications-on-the-progress-of-long-running-tasks">
+<h3>Periodic Notifications on the Progress of long-running Tasks<a class="headerlink" href="#periodic-notifications-on-the-progress-of-long-running-tasks" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code> method can be used to send out periodic notifications
+about a tasks progress. If the <code class="docutils literal notranslate"><span class="pre">incremental_output</span></code> parameter is <code class="docutils literal notranslate"><span class="pre">True</span></code>
+only the newly generated output since the last notification is populated
+into the <code class="docutils literal notranslate"><span class="pre">{output}</span></code> placeholder.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">notify</span><span class="o">.</span><span class="n">notification_template</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{task}</span><span class="s2"> </span><span class="si">{reason}</span><span class="s2"> </span><span class="si">{output}</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">notify</span><span class="o">.</span><span class="n">every</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">incremental_output</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.12</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;produced output&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.22</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+<span class="go">testtask progress update &lt;No output produced&gt;</span>
+<span class="go">testtask progress update produced output</span>
+<span class="go">testtask progress update &lt;No output produced&gt;</span>
+<span class="go">testtask done produced output</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="notify-about-stalled-code-blocks">
+<h3>Notify about stalled code blocks<a class="headerlink" href="#notify-about-stalled-code-blocks" title="Permalink to this headline">¶</a></h3>
+<p>Often you want to be notified if your long-running task may have stalled.
+The <code class="xref py py-meth docutils literal notranslate"><span class="pre">when_stalled()</span></code> method tries to detect a stall and sends out a
+notification.</p>
+<p>A stall is detected by checking the output produced by the code block.
+If for a specified <code class="docutils literal notranslate"><span class="pre">timeout</span></code> no new output is produced, the code is
+considered to be stalled.
+If a stall was detected, any produced output will send another notification
+to inform about the continuation.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">_</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">notify</span><span class="o">.</span><span class="n">notification_template</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{task}</span><span class="s2"> </span><span class="si">{reason}</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">notify</span><span class="o">.</span><span class="n">when_stalled</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;produced output&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+<span class="go">testtask probably stalled</span>
+<span class="go">testtask no longer stalled</span>
+</pre></div>
+</div>
+</div>
 </div>
 <div class="section" id="module-pytb.notification">
 <span id="api-documentation"></span><h2>API Documentation<a class="headerlink" href="#module-pytb.notification" title="Permalink to this headline">¶</a></h2>
@@ -168,9 +273,9 @@
 <dt id="pytb.notification.Notify">
 <em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">Notify</code><span class="sig-paren">(</span><em>task</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#Notify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.Notify" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object captures the basic configuration of how a notification should be handled.</p>
+<p>A <a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">Notify</span></code></a> object captures the basic configuration of how a notification should be handled.</p>
 <p>The methods <a class="reference internal" href="#pytb.notification.Notify.when_done" title="pytb.notification.Notify.when_done"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_done()</span></code></a>, <a class="reference internal" href="#pytb.notification.Notify.every" title="pytb.notification.Notify.every"><code class="xref py py-meth docutils literal notranslate"><span class="pre">every()</span></code></a> and <a class="reference internal" href="#pytb.notification.Notify.when_stalled" title="pytb.notification.Notify.when_stalled"><code class="xref py py-meth docutils literal notranslate"><span class="pre">when_stalled()</span></code></a> are reenterable
-context managers. Thus a single <code class="docutils literal notranslate"><span class="pre">Notify</span></code> object can be reused at several places and 
+context managers. Thus a single <a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">Notify</span></code></a> object can be reused at several places and 
 different context-managers can be reused in the same context.</p>
 <p>Overwrite the method <code class="xref py py-meth docutils literal notranslate"><span class="pre">_send_notification()</span></code> in a derived class to specify a custom handling
 of the notifications</p>
@@ -247,6 +352,8 @@ If the context exits cleanly, a notification is only sent if <code class="docuti
 <p>By default, all output to the <code class="docutils literal notranslate"><span class="pre">stdio</span></code> and <code class="docutils literal notranslate"><span class="pre">stderr</span></code> streams is captured and sent in the notification.
 If you expect huge amounts of output during the execution of the monitored code, you can
 disable the capturing with the <code class="docutils literal notranslate"><span class="pre">capture_output</span></code> parameter.</p>
+<p>To not spam you with notification when you stop the code execution yourself, <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code> 
+exceptions will not trigger a notification.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -294,7 +401,7 @@ before the code block is considiered to be stalled</p></li>
 <dt id="pytb.notification.NotifyViaEmail">
 <em class="property">class </em><code class="descclassname">pytb.notification.</code><code class="descname">NotifyViaEmail</code><span class="sig-paren">(</span><em>task</em>, <em>email_addresses=None</em>, <em>sender=None</em>, <em>smtp_host=None</em>, <em>smtp_port=None</em>, <em>smtp_ssl=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pytb/notification.html#NotifyViaEmail"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pytb.notification.NotifyViaEmail" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#pytb.notification.Notify" title="pytb.notification.Notify"><code class="xref py py-class docutils literal notranslate"><span class="pre">pytb.notification.Notify</span></code></a></p>
-<p>A <code class="docutils literal notranslate"><span class="pre">NotifyViaEmail</span></code> object uses an SMTP connection to send notification via emails.
+<p>A <a class="reference internal" href="#pytb.notification.NotifyViaEmail" title="pytb.notification.NotifyViaEmail"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotifyViaEmail</span></code></a> object uses an SMTP connection to send notification via emails.
 The SMTP server is configured either at runtime or via the effective <code class="docutils literal notranslate"><span class="pre">.pytb.config</span></code> 
 files <code class="docutils literal notranslate"><span class="pre">notify</span></code> section.</p>
 <dl class="field-list simple">

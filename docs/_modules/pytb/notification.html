@@ -176,10 +176,10 @@
 
 <div class="viewcode-block" id="Notify"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.Notify">[docs]</a><span class="k">class</span> <span class="nc">Notify</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A ``Notify`` object captures the basic configuration of how a notification should be handled.</span>
+<span class="sd">    A :class:`Notify` object captures the basic configuration of how a notification should be handled.</span>
 
 <span class="sd">    The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled` are reenterable</span>
-<span class="sd">    context managers. Thus a single ``Notify`` object can be reused at several places and </span>
+<span class="sd">    context managers. Thus a single :class:`Notify` object can be reused at several places and </span>
 <span class="sd">    different context-managers can be reused in the same context.</span>
 
 <span class="sd">    Overwrite the method :meth:`_send_notification` in a derived class to specify a custom handling</span>
@@ -209,6 +209,9 @@
 <span class="sd">        If you expect huge amounts of output during the execution of the monitored code, you can</span>
 <span class="sd">        disable the capturing with the ``capture_output`` parameter.</span>
 
+<span class="sd">        To not spam you with notification when you stop the code execution yourself, ``KeyboardInterrupt`` </span>
+<span class="sd">        exceptions will not trigger a notification.</span>
+
 <span class="sd">        :param only_if_error: if the context manager exits cleanly, do not send any notifications</span>
 <span class="sd">        :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it</span>
 <span class="sd">            to the notification</span>
@@ -232,6 +235,9 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="k">with</span> <span class="n">output_handler</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="c1"># do not send a notification when the user interrupts the code execution</span>
+            <span class="k">raise</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">exception</span> <span class="o">=</span> <span class="n">e</span>
 
@@ -449,7 +455,6 @@
             <span class="n">block_start</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">block_start</span> <span class="o">-</span> <span class="n">context_size</span><span class="p">)</span>
             <span class="n">block_end</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">block_end</span> <span class="o">+</span> <span class="n">context_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">caller_file_lines</span><span class="p">))</span>
 
-        <span class="c1"># join the</span>
         <span class="n">code_block_lines</span> <span class="o">=</span> <span class="n">caller_file_lines</span><span class="p">[</span><span class="n">block_start</span> <span class="p">:</span> <span class="n">block_end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
         <span class="n">code_block</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
 
@@ -467,7 +472,7 @@
 
 <div class="viewcode-block" id="NotifyViaEmail"><a class="viewcode-back" href="../../modules/notification.html#pytb.notification.NotifyViaEmail">[docs]</a><span class="k">class</span> <span class="nc">NotifyViaEmail</span><span class="p">(</span><span class="n">Notify</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    A ``NotifyViaEmail`` object uses an SMTP connection to send notification via emails.</span>
+<span class="sd">    A :class:`NotifyViaEmail` object uses an SMTP connection to send notification via emails.</span>
 <span class="sd">    The SMTP server is configured either at runtime or via the effective ``.pytb.config`` </span>
 <span class="sd">    files ``notify`` section.</span>
 
