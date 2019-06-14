@@ -2,6 +2,9 @@
 PyTb (Python Toolbox)
 =====================
 
+.. image:: assets/logo.png
+   :width: 100%
+
 This is a collection of useful snippets I find myself to use
 regularly during prototyping.
 
