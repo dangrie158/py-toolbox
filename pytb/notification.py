@@ -163,7 +163,7 @@ class Notify:
         function, thus it may never send a notification. If you want, you can simply use the same 
         :class:`Notify` to create mutliple contexts:
         
-        .. code-block::
+        .. code-block:: python
 
             with notify.when_stalled(timeout), notify.when_done():
                 # execute some potentially long-running process
