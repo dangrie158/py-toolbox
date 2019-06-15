@@ -4,9 +4,29 @@ import traceback
 import logging
 from pathlib import Path
 from pdb import Restart as PdbRestart
+from pathlib import Path
 
 from .config import current_config
 from .rdb import RdbClient, Rdb
+from .notification import NotifyViaStream, NotifyViaEmail
+
+
+def to_stream(stream_name):
+    if stream_name == "<stdout>":
+        return sys.__stdout__
+    elif stream_name == "<stderr>":
+        return sys.__stderr__
+    else:
+        stream_file = Path(stream_name)
+        if not stream_file.exists() or not stream_file.is_file():
+            raise argparse.ArgumentTypeError(f"{stream_name} is not a file")
+        else:
+            try:
+                return stream_file.open("a")
+            except:
+                raise argparse.ArgumentTypeError(
+                    f"could not open {stream_name} for writing"
+                )
 
 
 def main():
@@ -16,6 +36,77 @@ def main():
         prog="pytb", description="Python Toolkit CLI Interface"
     )
     subcommands = parser.add_subparsers(help="sub-command", dest="command")
+
+    notify_parser = subcommands.add_parser(
+        "notify", help="Statusnotification about long-running tasks."
+    )
+    notify_subcommands = notify_parser.add_subparsers(help="notifier", dest="notifier")
+    notify_config = current_config["notify"]
+
+    notify_via_email = notify_subcommands.add_parser("via-email")
+    notify_via_email.add_argument(
+        "--recipients",
+        nargs="+",
+        help="Recipient addresses for the notifications",
+        default=notify_config["email_addresses"],
+    )
+    notify_via_email.add_argument(
+        "--smtp-host",
+        help="Address of the external SMTP Server used to send notifications via E-Mail",
+        default=notify_config["smtp_host"],
+    )
+    notify_via_email.add_argument(
+        "--smtp-port",
+        type=int,
+        help="Port the external SMTP Server listens for incoming connections",
+        default=notify_config["smtp_port"],
+    )
+    notify_via_email.add_argument(
+        "--sender",
+        help="Sender Address for notifications",
+        default=notify_config["sender"],
+    )
+    notify_via_email.add_argument(
+        "--use-ssl",
+        action="store_true",
+        help="Use a SSL connection to communicate with the SMTP server",
+        default=notify_config["smtp_ssl"],
+    )
+    notify_via_email.add_argument(
+        "-m",
+        action="store_true",
+        help="Load an executable module or package instead of a file",
+        default=False,
+        dest="run_as_module",
+    )
+    notify_via_email.add_argument("script", help="script path or module name to run")
+    notify_via_email.add_argument(
+        "args",
+        help="additional parameter passed to the script",
+        nargs=argparse.REMAINDER,
+        metavar="args",
+    )
+
+    notify_via_stream = notify_subcommands.add_parser("via-stream")
+    notify_via_stream.add_argument(
+        "--stream",
+        help="The writable stream. This can be a filepath or the special values `<stdout>` or `<stderr>`",
+        type=to_stream,
+    )
+    notify_via_stream.add_argument(
+        "-m",
+        action="store_true",
+        help="Load an executable module or package instead of a file",
+        default=False,
+        dest="run_as_module",
+    )
+    notify_via_stream.add_argument("script", help="script path or module name to run")
+    notify_via_stream.add_argument(
+        "args",
+        help="additional parameter passed to the script",
+        nargs=argparse.REMAINDER,
+        metavar="args",
+    )
 
     rdb_parser = subcommands.add_parser("rdb", help="Remote debugging over TCP")
     rdb_subcommands = rdb_parser.add_subparsers(help="function", dest="function")
@@ -146,6 +237,25 @@ def main():
                     )
 
             rdb.do_quit(None)
+
+    elif args.command == "notify":
+        if not args.notifier:
+            print_help_and_exit(notify_parser)
+
+        elif args.notifier == "via-stream":
+            notifier = NotifyViaStream(task=args.script, stream=args.stream)
+
+        elif args.notifier == "via-email":
+            notifier = NotifyViaEmail(
+                task=args.script,
+                email_addresses=args.recipients,
+                sender=args.sender,
+                smtp_host=args.smtp_host,
+                smtp_port=args.smtp_port,
+                smtp_ssl=args.use_ssl,
+            )
+        print(args)
+        print(notifier)
 
 
 if __name__ == "__main__":
