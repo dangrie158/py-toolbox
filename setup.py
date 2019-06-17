@@ -6,7 +6,7 @@ def read(fname):
 
 setup(
     name='py-toolbox',
-    version='0.3.0',
+    version='0.4.0',
     author='Daniel Grießhaber',
     author_email='dangrie158@gmail.com',
     url='https://github.com/dangrie158/py-toolbox',
