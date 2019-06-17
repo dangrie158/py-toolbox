@@ -8,6 +8,13 @@ PyTb (Python Toolbox)
 This is a collection of useful snippets I find myself to use
 regularly during prototyping.
 
+Most of the functions are especially useful when working on
+remote machines via jupyter notebooks (e.g. a JupyterHub)
+with long-running processes (e.g. Deeplearning).
+
+Checkout the `Quickstart`_ section for common usecases and
+example code.
+
 `View the complete documentation <https://dangrie158.github.io/py-toolbox/>`_
 
 `View the code <https://github.com/dangrie158/py-toolbox>`_
