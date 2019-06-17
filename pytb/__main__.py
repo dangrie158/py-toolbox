@@ -2,9 +2,11 @@ import argparse
 import sys
 import traceback
 import logging
+from contextlib import ExitStack
 from pathlib import Path
 from pdb import Restart as PdbRestart
 from pathlib import Path
+import runpy
 
 from .config import current_config
 from .rdb import RdbClient, Rdb
@@ -39,6 +41,22 @@ def main():
 
     notify_parser = subcommands.add_parser(
         "notify", help="Statusnotification about long-running tasks."
+    )
+
+    notify_parser.add_argument(
+        "--every", help="Send a notification every X seconds", metavar="X", type=int
+    )
+    notify_parser.add_argument(
+        "--when-stalled",
+        help="Send a notification if the script seems to be stalled for more than X seconds",
+        metavar="X",
+        type=int,
+    )
+    notify_parser.add_argument(
+        "--when-done",
+        action="store_true",
+        default=False,
+        help="Send a notification whenever the script finishes",
     )
     notify_subcommands = notify_parser.add_subparsers(help="notifier", dest="notifier")
     notify_config = current_config["notify"]
@@ -92,6 +110,7 @@ def main():
         "--stream",
         help="The writable stream. This can be a filepath or the special values `<stdout>` or `<stderr>`",
         type=to_stream,
+        required=True,
     )
     notify_via_stream.add_argument(
         "-m",
@@ -163,16 +182,12 @@ def main():
 
     args = parser.parse_args()
 
-    def print_help_and_exit(sub_parser):
-        sub_parser.print_help()
-        sys.exit(-1)
-
     if not args.command:
-        print_help_and_exit(parser)
+        parser.error("You need to specify a subcommand")
 
     elif args.command == "rdb":
         if not args.function:
-            print_help_and_exit(rdb_parser)
+            rdb_parser.error("You need to specify the function")
 
         elif args.function == "client":
             # create the client instance
@@ -239,13 +254,25 @@ def main():
             rdb.do_quit(None)
 
     elif args.command == "notify":
+        if not args.when_done and args.every is None and args.when_stalled is None:
+            notify_parser.error(
+                "You need to specify at least one of the notification options --when-done, --every or --when-stalled\n"
+            )
+
         if not args.notifier:
-            print_help_and_exit(notify_parser)
+            notify_parser.error(
+                "You need to specify the notification system to use (EMail or Stream"
+            )
 
         elif args.notifier == "via-stream":
             notifier = NotifyViaStream(task=args.script, stream=args.stream)
 
         elif args.notifier == "via-email":
+            if len(args.recipients) == 0:
+                notify_via_email.error(
+                    "Make sure to include at least one recipient via the .pytb.conf or via the --recipients option\n"
+                )
+
             notifier = NotifyViaEmail(
                 task=args.script,
                 email_addresses=args.recipients,
@@ -254,8 +281,47 @@ def main():
                 smtp_port=args.smtp_port,
                 smtp_ssl=args.use_ssl,
             )
-        print(args)
-        print(notifier)
+
+        notifier_context = []
+        if args.when_stalled is not None:
+            notifier_context.append(notifier.when_stalled(args.when_stalled))
+        if args.every is not None:
+            notifier_context.append(notifier.every(args.every))
+        if args.when_done:
+            notifier_context.append(notifier.when_done())
+
+        # assemble the execution environemnt for the script to run
+        script_globals = {"__name__": "__main__"}
+        if args.run_as_module:
+            mod_name, mod_spec, code = runpy._get_module_details(args.script)
+            script_globals.update(
+                {
+                    "__file__": code.co_filename,
+                    "__package__": mod_spec.parent,
+                    "__loader__": mod_spec.loader,
+                    "__spec__": mod_spec,
+                }
+            )
+        else:
+            mainpyfile = Path(args.script)
+            # Replace this modules dir with script's dir in front of module search path.
+            sys.path[0] = str(mainpyfile.parent)
+            with mainpyfile.open("rb") as fp:
+                code = compile(fp.read(), args.script, "exec")
+
+            script_globals.update({"__file__": args.script})
+
+        # overwrite the arguments with the user provided args
+        sys.argv = [str(args.script)] + args.args
+
+        with ExitStack() as notifiers:
+            [notifiers.enter_context(context) for context in notifier_context]
+
+            exec(code, script_globals, script_globals)
+
+        # print(notifier_context)
+        # print(args)
+        # print(notifier)
 
 
 if __name__ == "__main__":

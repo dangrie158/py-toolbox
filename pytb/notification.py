@@ -66,12 +66,15 @@ class Notify:
         :param caller_frame: the stackframe to use when determining the code block for the notification. 
             If None, the stackframe of the line that called this function is used
         """
-        self._logger.info(f"entering when done context")
 
         # if called from user code, the calling frame is unspecified. save it fur future reference
         if caller_frame is None:
             # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
             caller_frame = inspect.currentframe().f_back.f_back
+
+            # only print the debug message when this context is not invoked
+            # from another context in this notifier
+            self._logger.info(f"Entering when-done Context")
 
         output_buffer = StringIO()
         output_handler = (

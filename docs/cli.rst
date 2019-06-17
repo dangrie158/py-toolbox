@@ -5,6 +5,100 @@ Command Line Interface
 The toolkit can be run as an executable (e.g. using the ``-m`` switch
 of the python command or by using the automatically created ``pytb`` command)
 
+**************************************
+Notifications for long running scripts
+**************************************
+
+Command line interface for the
+:doc:`notification module <modules/notification>`.
+
+You can choose a build-in notifier via the ``via-email`` and
+``via-stream`` switches.
+Notification rules can be configured via the ``--when-done``,
+``--when-stalled`` and ``--every`` options.
+
+.. code-block:: none
+
+    usage: pytb notify [-h] [--every X] [--when-stalled X] [--when-done]
+                    {via-email,via-stream} ...
+
+    positional arguments:
+    {via-email,via-stream}
+                            notifier
+
+    optional arguments:
+    -h, --help            show this help message and exit
+    --every X             Send a notification every X seconds
+    --when-stalled X      Send a notification if the script seems to be stalled
+                            for more than X seconds
+    --when-done           Send a notification whenever the script finishes
+
+E-Mail Notifier
+***************
+
+.. code-block:: none
+
+    usage: pytb notify via-email [-h] [--recipients RECIPIENTS [RECIPIENTS ...]]
+                                [--smtp-host SMTP_HOST] [--smtp-port SMTP_PORT]
+                                [--sender SENDER] [--use-ssl] [-m]
+                                script ...
+
+    positional arguments:
+    script                script path or module name to run
+    args                  additional parameter passed to the script
+
+    optional arguments:
+    -h, --help            show this help message and exit
+    --recipients RECIPIENTS [RECIPIENTS ...]
+                            Recipient addresses for the notifications
+    --smtp-host SMTP_HOST
+                            Address of the external SMTP Server used to send
+                            notifications via E-Mail
+    --smtp-port SMTP_PORT
+                            Port the external SMTP Server listens for incoming
+                            connections
+    --sender SENDER       Sender Address for notifications
+    --use-ssl             Use a SSL connection to communicate with the SMTP
+                            server
+    -m                    Load an executable module or package instead of a file
+
+**Note**: If you want to specify multiple recipients as the last option
+in your command line, use ``--`` to seperate the argument list from the
+script option with multiple arguments.
+
+*Example*:
+
+.. code-block:: none
+
+    pytb notify --when-done --when-stalled 5 via-email --recipients recipient1@mail.com recipient2@mail.com -- myscript.py param1 --param2=val 
+
+Stream Notifier
+***************
+
+.. code-block:: none
+
+    usage: pytb notify via-stream [-h] [--stream STREAM] [-m] script ...
+
+    positional arguments:
+    script           script path or module name to run
+    args             additional parameter passed to the script
+
+    optional arguments:
+    -h, --help       show this help message and exit
+    --stream STREAM  The writable stream. This can be a filepath or the special
+                    values `<stdout>` or `<stderr>`
+    -m               Load an executable module or package instead of a file
+
+**Note**: If you want to use the ``stdout`` or ``stderr`` stream as output,
+simply use the constants ``<stdout>`` or ``<stderr>`` for the stream parameter.
+If your shell tries to replace those values (e.g. ``zsh``), quote the strings.
+
+*Example*:
+
+.. code-block:: none
+
+    python -m pytb notify --every 5 via-stream --stream="<stdout>" -m http.server
+
 ****************************
 Remote Debugger ``pytb rdb``
 ****************************

@@ -2,7 +2,7 @@
 .direnv/**
 .vscode/**
 **/.DS_Store
-docs-src/_build/**
+docs/_build/**
 dist/**
 MANIFEST
 build/**
