@@ -88,7 +88,7 @@ def main():
         "--use-ssl",
         action="store_true",
         help="Use a SSL connection to communicate with the SMTP server",
-        default=notify_config["smtp_ssl"],
+        default=notify_config.getboolean("smtp_ssl"),
     )
     notify_via_email.add_argument(
         "-m",
@@ -318,10 +318,6 @@ def main():
             [notifiers.enter_context(context) for context in notifier_context]
 
             exec(code, script_globals, script_globals)
-
-        # print(notifier_context)
-        # print(args)
-        # print(notifier)
 
 
 if __name__ == "__main__":

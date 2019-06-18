@@ -2,6 +2,11 @@
 Changelog
 *********
 
+0.4.1
+*****
+
+- Fixed error when reading "use_ssl" config option in via-email CLI command
+
 0.4.0
 *****
 
