@@ -2,6 +2,11 @@
 Changelog
 *********
 
+0.4.3
+*****
+
+- Added CHANGELOG to ditribution files
+
 0.4.2
 *****
 
