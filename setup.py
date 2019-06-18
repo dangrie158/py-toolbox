@@ -1,12 +1,19 @@
 from setuptools import setup
 from os import path
+import re
 
 def read(fname):
     return open(path.join(path.dirname(__file__), fname)).read()
 
+def get_version():
+    with open('CHANGELOG.rst') as changelog: 
+        for line in changelog: 
+            if re.match(r'^\d+\.\d+\.\d+$', line):
+                return line
+
 setup(
     name='py-toolbox',
-    version='0.4.1',
+    version=get_version(),
     author='Daniel Grießhaber',
     author_email='dangrie158@gmail.com',
     url='https://github.com/dangrie158/py-toolbox',

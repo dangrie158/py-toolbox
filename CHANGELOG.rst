@@ -2,6 +2,14 @@
 Changelog
 *********
 
+0.4.2
+*****
+
+- Fixed error when reading the "email_addresses" config option in CLI command
+- Added dummy frame for code block display when using notification module via
+    CLI
+- Added automatic version detection in setup.py read from CHANGELOG
+
 0.4.1
 *****
 
