@@ -112,7 +112,7 @@ class Notify:
             self._send_notification(self.task, "done", caller_frame, output)
 
     @contextmanager
-    def every(self, interval, incremental_output=False):
+    def every(self, interval, incremental_output=False, caller_frame=None):
         """
         Send out notifications with a fixed interval to receive progress updates. 
         This contextmanager wraps a :meth:`when_done`, so it is guaranteed to send
@@ -122,10 +122,14 @@ class Notify:
             number of seconds between notifications
         :param incremental_output: Only send incremental output summaries with each update. If ``False``
             the complete captured output is sent each time
+        :param caller_frame: the stackframe to use when determining the code block for the notification. 
+            If None, the stackframe of the line that called this function is used
         """
 
-        # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
-        caller_frame = inspect.currentframe().f_back.f_back
+        # if called from user code, the calling frame is unspecified. save it fur future reference
+        if caller_frame is None:
+            # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
+            caller_frame = inspect.currentframe().f_back.f_back
 
         output_buffer = StringIO()
         output_handler = mirrored_stdstreams(output_buffer)
@@ -152,7 +156,7 @@ class Notify:
             progress_sender.stop()
 
     @contextmanager
-    def when_stalled(self, timeout, capture_output=True):
+    def when_stalled(self, timeout, capture_output=True, caller_frame=None):
         """
         Monitor the output of the code bock to determine a possible stall of the execution.
         The execution is considered to be stalled when no new output is produced within
@@ -176,9 +180,14 @@ class Notify:
         :param timeout: maximum number of seconds where no new output is produced
             before the code block is considiered to be stalled
         :param capture_output: append all output to ``stdout`` and ``stderr`` to the notification
+        :param caller_frame: the stackframe to use when determining the code block for the notification. 
+            If None, the stackframe of the line that called this function is used
         """
 
-        caller_frame = inspect.currentframe().f_back.f_back
+        # if called from user code, the calling frame is unspecified. save it fur future reference
+        if caller_frame is None:
+            # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
+            caller_frame = inspect.currentframe().f_back.f_back
 
         output_buffer = StringIO()
         output_handler = mirrored_stdstreams(output_buffer)

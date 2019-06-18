@@ -2,11 +2,12 @@ import argparse
 import sys
 import traceback
 import logging
+import runpy
+from types import FrameType
 from contextlib import ExitStack
 from pathlib import Path
 from pdb import Restart as PdbRestart
 from pathlib import Path
-import runpy
 
 from .config import current_config
 from .rdb import RdbClient, Rdb
@@ -282,14 +283,6 @@ def main():
                 smtp_ssl=args.use_ssl,
             )
 
-        notifier_context = []
-        if args.when_stalled is not None:
-            notifier_context.append(notifier.when_stalled(args.when_stalled))
-        if args.every is not None:
-            notifier_context.append(notifier.every(args.every))
-        if args.when_done:
-            notifier_context.append(notifier.when_done())
-
         # assemble the execution environemnt for the script to run
         script_globals = {"__name__": "__main__"}
         if args.run_as_module:
@@ -310,6 +303,24 @@ def main():
                 code = compile(fp.read(), args.script, "exec")
 
             script_globals.update({"__file__": args.script})
+
+        # assemble a dummy frame with the compiled code_object
+        # to use for the code_block creation of the notifier_context
+        dummy_frame = type(FrameType.__name__, (), {})()
+        setattr(dummy_frame, "f_code", code)
+        setattr(dummy_frame, "f_lineno", 0)
+
+        notifier_context = []
+        if args.when_stalled is not None:
+            notifier_context.append(
+                notifier.when_stalled(args.when_stalled, caller_frame=dummy_frame)
+            )
+        if args.every is not None:
+            notifier_context.append(
+                notifier.every(args.every, caller_frame=dummy_frame)
+            )
+        if args.when_done:
+            notifier_context.append(notifier.when_done(caller_frame=dummy_frame))
 
         # overwrite the arguments with the user provided args
         sys.argv = [str(args.script)] + args.args
