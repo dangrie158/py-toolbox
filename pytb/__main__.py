@@ -66,7 +66,7 @@ def main():
         "--recipients",
         nargs="+",
         help="Recipient addresses for the notifications",
-        default=notify_config["email_addresses"],
+        default=notify_config.getlist("email_addresses"),
     )
     notify_via_email.add_argument(
         "--smtp-host",
