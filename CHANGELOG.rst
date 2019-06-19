@@ -2,6 +2,11 @@
 Changelog
 *********
 
+0.4.4
+*****
+
+- added ``now()`` method to Notifiers to allow manually sending notifications
+
 0.4.3
 *****
 
