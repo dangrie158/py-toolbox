@@ -46,6 +46,18 @@ class Notify:
 
         self.task = task
 
+    def now(self, message):
+        """
+        Send a manual notification now. This will use the provided ``message`` as
+        the ``reason`` placeholder. No output can be capured using this function.
+
+        :param message: A string used to fill the ``{reason}`` placeholder of the notification
+        """
+        caller_frame = inspect.currentframe().f_back.f_back
+        self._send_notification(
+            self.task, message, caller_frame, "<output not available>"
+        )
+
     @contextmanager
     def when_done(self, only_if_error=False, capture_output=True, caller_frame=None):
         """

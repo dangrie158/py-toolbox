@@ -29,14 +29,10 @@ method:
     or a `io.StringIO` instance). When using pythons `socket <https://docs.python.org/3/library/socket.html#module-socket>`_
     module, use the sockets :meth:`makefile` method to get a writable stream.
 
-Notify when a code block exits (on success or failure)
-******************************************************
+Manually sending Notifications
+******************************
 
-The :meth:`when_done` method can be used to be notified when a code block
-exits. This method will always send exactly one notification when the task
-exits (gracefully or when a unhandeled exception is thrown) except if the
-``only_if_error`` parameter is ``True``. In this case a graceful exit will
-not send any notification.
+You can send Notification manually using the :meth:`now()` method:
 
 .. testsetup::
 
@@ -50,7 +46,23 @@ not send any notification.
     >>> notify = NotifyViaStream("testtask", stream)
     >>> # set a custom template used to stringify the notifications
     >>> notify.notification_template = "{task} {reason} {exinfo}"
+    >>> notify.now("test successful")
+    >>> stream.getvalue()
+    'testtask test successful '
 
+Notify when a code block exits (on success or failure)
+******************************************************
+
+The :meth:`when_done` method can be used to be notified when a code block
+exits. This method will always send exactly one notification when the task
+exits (gracefully or when a unhandeled exception is thrown) except if the
+``only_if_error`` parameter is ``True``. In this case a graceful exit will
+not send any notification.
+
+.. doctest::
+
+    >>> _ = stream.truncate(0)
+    >>> _ = stream.seek(0)
     >>> with notify.when_done():
     ...     # potentially long-running process
     ...     pass
