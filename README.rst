@@ -8,6 +8,13 @@ PyTb (Python Toolbox)
 This is a collection of useful snippets I find myself to use
 regularly during prototyping.
 
+.. image:: https://travis-ci.com/dangrie158/py-toolbox.svg?branch=master
+   :alt: Build Status
+
+.. image:: https://readthedocs.org/projects/py-toolbox/badge/?version=latest
+   :target: https://py-toolbox.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 Most of the functions are especially useful when working on
 remote machines via jupyter notebooks (e.g. a JupyterHub)
 with long-running processes (e.g. Deeplearning).
