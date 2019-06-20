@@ -2,6 +2,13 @@
 Changelog
 *********
 
+0.4.5
+*****
+
+- fixed an error when importing importlib while no ipython is available
+- updated dev requirements
+- enabled automated CI with travis
+
 0.4.4
 *****
 
