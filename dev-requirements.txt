@@ -5,7 +5,7 @@ attrs==19.1.0
 Babel==2.7.0
 backcall==0.1.0
 black==19.3b0
-certifi==2019.3.9
+certifi==2019.6.16
 chardet==3.0.4
 Click==7.0
 decorator==4.4.0
@@ -17,7 +17,7 @@ ipython-genutils==0.2.0
 jedi==0.13.3
 Jinja2==2.10.1
 jsonschema==3.0.1
-jupyter-core==4.4.0
+jupyter-core==4.5.0
 MarkupSafe==1.1.1
 nbformat==4.4.0
 packaging==19.0
@@ -26,7 +26,6 @@ pexpect==4.7.0
 pickleshare==0.7.5
 prompt-toolkit==2.0.9
 ptyprocess==0.6.0
-py-toolbox==0.1.0
 Pygments==2.4.2
 pyparsing==2.4.0
 pyrsistent==0.15.2
@@ -34,7 +33,7 @@ pytz==2019.1
 requests==2.22.0
 six==1.12.0
 snowballstemmer==1.2.1
-Sphinx==2.0.1
+Sphinx==2.1.2
 sphinx-rtd-theme==0.4.3
 sphinxcontrib-applehelp==1.0.1
 sphinxcontrib-devhelp==1.0.1
