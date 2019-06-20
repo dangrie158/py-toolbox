@@ -11,9 +11,7 @@ from contextlib import suppress
 
 from .config import current_config as pytb_config
 
-with suppress(Exception):
-    from nbformat import read as read_notebook
-
+from nbformat import read as read_notebook
 
 with suppress(Exception):
     from IPython import get_ipython
@@ -331,12 +329,11 @@ class NotebookLoader(ModuleLoader):
     def exec_module(self, module):
         super().exec_module(module)
 
-        module.__dict__["get_ipython"] = get_ipython
-
         with io.open(module.__spec__.origin, "r", encoding="utf-8") as f:
             notebook = read_notebook(f, 4)
 
         if self.shell is not None:
+            module.__dict__["get_ipython"] = get_ipython
             # extra work to ensure that magics that would affect the user_ns
             # actually affect the notebook module's namespace
             save_user_ns = self.shell.user_ns
