@@ -1,0 +1,12 @@
+[MASTER]
+
+# Add files or directories matching the regex patterns to the blacklist. The
+# regex matches against base names, not paths.
+ignore-patterns=test_*.py
+
+# disable logging-fstring-interpolation because we're not concerned about
+# a minimal performance hit and the improved readability is worth it
+#
+# disable bad-continuation because it falsley flags code formatted by BLACK
+disable=logging-fstring-interpolation,bad-continuation,too-many-locals,too-many-branches,too-many-statements,too-many-ancestors,too-many-arguments,duplicate-code
+    
