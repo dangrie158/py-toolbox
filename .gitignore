@@ -8,3 +8,5 @@ MANIFEST
 build/**
 *.egg-info
 *.pyc
+.pytest_cache/**
+.mypy_cache/**

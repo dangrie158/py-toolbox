@@ -1,7 +1,6 @@
 import doctest
 import unittest
 
-import sys
 import io
 
 from pytb import importlib, test, io as pyio
@@ -26,17 +25,17 @@ class TestNotebookLoader(unittest.TestCase):
 class TestNoModuleCache(unittest.TestCase):
     def test_reload_on_import(self):
 
-        from .fixtures import random_module
+        from pytb.test.fixtures import random_module
 
         rand_num_one = random_module.random_number
         with importlib.NoModuleCacheContext():
-            from .fixtures import random_module
+            from pytb.test.fixtures import random_module
 
         rand_num_two = random_module.random_number
         self.assertNotEqual(rand_num_one, rand_num_two)
 
         with importlib.no_module_cache:
-            from .fixtures import random_module
+            from pytb.test.fixtures import random_module
 
         rand_num_three = random_module.random_number
         self.assertNotEqual(rand_num_two, rand_num_three)

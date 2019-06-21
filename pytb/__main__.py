@@ -1,3 +1,7 @@
+"""
+Entrypoint for the pytb CLI (the ```pytb``` command)
+"""
+
 import argparse
 import sys
 import traceback
@@ -7,32 +11,44 @@ from types import FrameType
 from contextlib import ExitStack
 from pathlib import Path
 from pdb import Restart as PdbRestart
-from pathlib import Path
 
-from .config import current_config
-from .rdb import RdbClient, Rdb
-from .notification import NotifyViaStream, NotifyViaEmail
+from pytb.config import current_config
+from pytb.rdb import RdbClient, Rdb
+from pytb.notification import NotifyViaStream, NotifyViaEmail
 
 
 def to_stream(stream_name):
+    """
+    Takes a stream name and turns it into a readable file-like object.
+
+    Handles the special names ```<stdout>``` and ```<stderr>``` to return
+    the processes output streams. All other names are treated as paths to a
+    writable file which is opened in append (```a```) mode
+    """
     if stream_name == "<stdout>":
         return sys.__stdout__
-    elif stream_name == "<stderr>":
+
+    if stream_name == "<stderr>":
         return sys.__stderr__
-    else:
-        stream_file = Path(stream_name)
-        if not stream_file.exists() or not stream_file.is_file():
-            raise argparse.ArgumentTypeError(f"{stream_name} is not a file")
-        else:
-            try:
-                return stream_file.open("a")
-            except:
-                raise argparse.ArgumentTypeError(
-                    f"could not open {stream_name} for writing"
-                )
+
+    stream_file = Path(stream_name)
+    if not stream_file.exists() or not stream_file.is_file():
+        raise argparse.ArgumentTypeError(f"{stream_name} is not a file")
+
+    try:
+        return stream_file.open("a")
+    except:
+        raise argparse.ArgumentTypeError(f"could not open {stream_name} for writing")
 
 
 def main():
+    """
+    Main entry point for the CLI. Handles all the argument parsing and
+    runs the subcommands.
+
+    All arguments are read from sys.args
+    """
+
     _logger = logging.getLogger()
 
     parser = argparse.ArgumentParser(
@@ -109,7 +125,8 @@ def main():
     notify_via_stream = notify_subcommands.add_parser("via-stream")
     notify_via_stream.add_argument(
         "--stream",
-        help="The writable stream. This can be a filepath or the special values `<stdout>` or `<stderr>`",
+        help="The writable stream. This can be a filepath or the special \
+            values `<stdout>` or `<stderr>`",
         type=to_stream,
         required=True,
     )
@@ -197,7 +214,7 @@ def main():
             )
             try:
                 RdbClient(args.host, args.port)
-                _logger.warn(f"connection to {args.host}:{args.port} closed.")
+                _logger.warning(f"connection to {args.host}:{args.port} closed.")
             except ConnectionRefusedError:
                 _logger.error(f"connection to {args.host}:{args.port} refused.")
                 sys.exit(2)
@@ -220,6 +237,7 @@ def main():
                 rdb.rcLines.extend(args.commands)
 
             while True:
+                # pylint: disable=broad-except,protected-access
                 try:
                     if args.run_as_module:
                         rdb._runmodule(str(mainpyfile))
@@ -242,12 +260,12 @@ def main():
                     traceback.print_exc()
                     rdb.do_quit(None)
                     sys.exit(1)
-                except:
+                except Exception:
                     traceback.print_exc()
                     _logger.error("Uncaught exception. Entering post mortem debugging")
                     _logger.error("Running 'cont' or 'step' will restart the program")
-                    t = sys.exc_info()[2]
-                    rdb.interaction(None, t)
+                    current_tb = sys.exc_info()[2]
+                    rdb.interaction(None, current_tb)
                     _logger.info(
                         f"Post mortem debugger finished. The {mainpyfile} will be restarted"
                     )
@@ -257,7 +275,8 @@ def main():
     elif args.command == "notify":
         if not args.when_done and args.every is None and args.when_stalled is None:
             notify_parser.error(
-                "You need to specify at least one of the notification options --when-done, --every or --when-stalled\n"
+                "You need to specify at least one of the notification options \
+                    --when-done, --every or --when-stalled\n"
             )
 
         if not args.notifier:
@@ -269,9 +288,10 @@ def main():
             notifier = NotifyViaStream(task=args.script, stream=args.stream)
 
         elif args.notifier == "via-email":
-            if len(args.recipients) == 0:
+            if not args.recipients:
                 notify_via_email.error(
-                    "Make sure to include at least one recipient via the .pytb.conf or via the --recipients option\n"
+                    "Make sure to include at least one recipient via the .pytb.conf \
+                        or via the --recipients option\n"
                 )
 
             notifier = NotifyViaEmail(
@@ -286,7 +306,9 @@ def main():
         # assemble the execution environemnt for the script to run
         script_globals = {"__name__": "__main__"}
         if args.run_as_module:
-            mod_name, mod_spec, code = runpy._get_module_details(args.script)
+            _, mod_spec, code = runpy._get_module_details(  # pylint: disable=protected-access
+                args.script
+            )
             script_globals.update(
                 {
                     "__file__": code.co_filename,
@@ -299,8 +321,8 @@ def main():
             mainpyfile = Path(args.script)
             # Replace this modules dir with script's dir in front of module search path.
             sys.path[0] = str(mainpyfile.parent)
-            with mainpyfile.open("rb") as fp:
-                code = compile(fp.read(), args.script, "exec")
+            with mainpyfile.open("rb") as scriptfile:
+                code = compile(scriptfile.read(), args.script, "exec")
 
             script_globals.update({"__file__": args.script})
 
@@ -326,9 +348,9 @@ def main():
         sys.argv = [str(args.script)] + args.args
 
         with ExitStack() as notifiers:
-            [notifiers.enter_context(context) for context in notifier_context]
-
-            exec(code, script_globals, script_globals)
+            for context in notifier_context:
+                notifiers.enter_context(context)
+            exec(code, script_globals, script_globals)  # pylint: disable=exec-used
 
 
 if __name__ == "__main__":

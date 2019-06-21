@@ -1,41 +1,130 @@
-import smtplib
-import logging
-import inspect
-import linecache
-import threading
-import time
-from datetime import timedelta
-from functools import partial
-from socket import getfqdn
-from contextlib import contextmanager, nullcontext
-from email.message import EmailMessage
-from dataclasses import dataclass
-from io import StringIO
-from textwrap import dedent
-
-from .config import current_config
-from .io import mirrored_stdstreams
-
 """
 Automatic task progress and monitoring notification via E-Mail.
 Especially useful to supervise long-running tasks
 """
 
+import smtplib
+import logging
+import inspect
+import linecache
+import threading
+from datetime import timedelta
+from socket import getfqdn
+from contextlib import contextmanager, nullcontext
+from email.message import EmailMessage
+from io import StringIO  # pylint: disable=no-name-in-module
+from textwrap import dedent
+
+from pytb.config import current_config
+from pytb.io import mirrored_stdstreams
+
+
+def _get_caller_code_fragment(caller_frame, context_size=3):
+    """
+    Create a string representation of the code that called the Notify.
+    The code block returned is selected using the following rules:
+
+    1. If the calling line is unindented, add a conext of
+        the surrounding ``context_size`` lines
+    2. If the calling line is in any indentation level > 0,
+        return all lines above and below that are also indented
+
+    An indentet line is any line with a leading whitespace.
+
+    Each line in the code block is prefixed with its linenumber within the file and
+    the calling ine is marked with an arrow ('--->')
+
+    :param caller_frame: The stack frame to use for code representation
+    :param context_size: Number of lines of context to add above and below
+        if the calling code is unindented
+
+    Example:
+
+    .. testsetup:: *
+
+        from pytb.notification import Notify
+
+    .. doctest::
+
+        >>> import inspect
+        >>> def test():
+        ...     x = 1 + 1
+        ...     frame = inspect.currentframe()
+        ...     y = 2 + 2
+        ...     return frame
+        >>> frame = test()
+        >>> code_block = _get_caller_code_fragment(frame)
+        >>> print(code_block)
+             2: def test():
+             3:     x = 1 + 1
+             4:     frame = inspect.currentframe()
+        ---> 5:     y = 2 + 2
+             6:     return frame
+
+    """
+    filename = caller_frame.f_code.co_filename
+    lineno = caller_frame.f_lineno
+    caller_file_lines = linecache.getlines(filename)
+
+    def get_indentation(line):
+        level = 0
+        for char in line:
+            if char in ("\t", " "):
+                level += 1
+            else:
+                return level
+        return level
+
+    levels = [get_indentation(line) for line in caller_file_lines]
+
+    # -1 from lineno because line numbers are 1-indexed
+    block_start = block_end = lineno - 1
+
+    # move the start and end line to the block boundaries
+    # (next occurence of unindented line)
+    while block_start > 0 and levels[block_start] > 0:
+        # move up a line
+        block_start -= 1
+
+    while len(levels) < block_end and levels[block_end] > 0:
+        # move down a line
+        block_end += 1
+
+    if block_start == block_end:
+        # add some context, otherwise the caller
+        # would only be a single line
+        block_start = max(0, block_start - context_size)
+        block_end = min(block_end + context_size, len(caller_file_lines))
+
+    code_block_lines = caller_file_lines[block_start : block_end + 1]
+    code_block = ""
+
+    # count the number of characters that are needed to represent
+    # the biggest possible line number
+    space_for_linenos = len(str(len(caller_file_lines)))
+    for block_lineno, line in enumerate(code_block_lines):
+        cur_lineno = block_start + block_lineno + 2
+        prefix = "--->" if cur_lineno == lineno else "    "
+        code_block += f"{prefix} {str(cur_lineno).ljust(space_for_linenos)}: {line}"
+
+    # remove any training whitespaces and newlines
+    return code_block.rstrip()
+
 
 class Notify:
     """
-    A :class:`Notify` object captures the basic configuration of how a notification should be handled.
+    A :class:`Notify` object captures the basic configuration of how a
+    notification should be handled.
 
-    The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled` are reenterable
-    context managers. Thus a single :class:`Notify` object can be reused at several places and 
-    different context-managers can be reused in the same context.
+    The methods :meth:`when_done`, :meth:`every` and :meth:`when_stalled`
+    are reenterable context managers. Thus a single :class:`Notify` object
+    can be reused at several places and different context-managers can be
+    reused in the same context.
 
-    Overwrite the method :meth:`_send_notification` in a derived class to specify a custom handling
-    of the notifications
+    Overwrite the method :meth:`_send_notification` in a derived class to
+    specify a custom handling of the notifications
 
     :param task: A short description of the monitored block.
-    
-    .. automethod:: _get_caller_code_fragment
 
     """
 
@@ -61,27 +150,32 @@ class Notify:
     @contextmanager
     def when_done(self, only_if_error=False, capture_output=True, caller_frame=None):
         """
-        Create a context that, when exited, will send notifications. If an unhandled exception
-        is raised during execution, a notification on the failure of the execution is sent.
-        If the context exits cleanly, a notification is only sent if ``only_if_error`` is set to ``False``
+        Create a context that, when exited, will send notifications.
+        If an unhandled exception is raised during execution, a notification
+        on the failure of the execution is sent. If the context exits cleanly,
+        a notification is only sent if ``only_if_error`` is set to ``False``
 
-        By default, all output to the ``stdio`` and ``stderr`` streams is captured and sent in the notification.
-        If you expect huge amounts of output during the execution of the monitored code, you can
-        disable the capturing with the ``capture_output`` parameter.
+        By default, all output to the ``stdio`` and ``stderr`` streams is
+        captured and sent in the notification. If you expect huge amounts of
+        output during the execution of the monitored code, you can disable
+        the capturing with the ``capture_output`` parameter.
 
-        To not spam you with notification when you stop the code execution yourself, ``KeyboardInterrupt`` 
-        exceptions will not trigger a notification.
+        To not spam you with notification when you stop the code execution
+        yourself, ``KeyboardInterrupt`` exceptions will not trigger a notification.
 
-        :param only_if_error: if the context manager exits cleanly, do not send any notifications
-        :param capture_output: capture all output to the ``stdout`` and ``stderr`` stream and append it
-            to the notification
-        :param caller_frame: the stackframe to use when determining the code block for the notification. 
-            If None, the stackframe of the line that called this function is used
+        :param only_if_error: if the context manager exits cleanly, do not send
+            any notifications
+        :param capture_output: capture all output to the ``stdout`` and ``stderr``
+            stream and append it to the notification
+        :param caller_frame: the stackframe to use when determining the code block
+            for the notification. If None, the stackframe of the line that called
+            this function is used
         """
 
         # if called from user code, the calling frame is unspecified. save it fur future reference
         if caller_frame is None:
-            # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
+            # we need to go 2 frames up because the direct parent is the
+            # contextmanagers ``__enter__`` method`
             caller_frame = inspect.currentframe().f_back.f_back
 
             # only print the debug message when this context is not invoked
@@ -95,14 +189,12 @@ class Notify:
 
         exception = None
 
+        # pylint: disable=broad-except
         try:
             with output_handler:
                 yield self
-        except KeyboardInterrupt:
-            # do not send a notification when the user interrupts the code execution
-            raise
-        except Exception as e:
-            exception = e
+        except Exception as current_exception:
+            exception = current_exception
 
         output = (
             output_buffer.getvalue()
@@ -115,32 +207,35 @@ class Notify:
                 f"Notification context left without error. Not firing notification"
             )
             return
-        elif exception is not None:
+
+        if exception is not None:
             self._send_notification(
                 self.task, "failed", caller_frame, output, exception
             )
             raise exception
-        else:
-            self._send_notification(self.task, "done", caller_frame, output)
+
+        self._send_notification(self.task, "done", caller_frame, output)
 
     @contextmanager
     def every(self, interval, incremental_output=False, caller_frame=None):
         """
-        Send out notifications with a fixed interval to receive progress updates. 
+        Send out notifications with a fixed interval to receive progress updates.
         This contextmanager wraps a :meth:`when_done`, so it is guaranteed to send
         to notify at least once upon task completion or error.
 
         :param interval: ``float``, ``int`` or ``datetime.timedelta`` object representing the
             number of seconds between notifications
-        :param incremental_output: Only send incremental output summaries with each update. If ``False``
-            the complete captured output is sent each time
-        :param caller_frame: the stackframe to use when determining the code block for the notification. 
-            If None, the stackframe of the line that called this function is used
+        :param incremental_output: Only send incremental output summaries with each update.
+            If ``False`` the complete captured output is sent each time
+        :param caller_frame: the stackframe to use when determining the code block for
+            the notification. If None, the stackframe of the line that called this
+            function is used
         """
 
         # if called from user code, the calling frame is unspecified. save it fur future reference
         if caller_frame is None:
-            # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
+            # we need to go 2 frames up because the direct parent
+            # is the contextmanagers ``__enter__`` method`
             caller_frame = inspect.currentframe().f_back.f_back
 
         output_buffer = StringIO()
@@ -172,16 +267,16 @@ class Notify:
         """
         Monitor the output of the code bock to determine a possible stall of the execution.
         The execution is considered to be stalled when no new output is produced within
-        ``timeout`` seconds. 
-        
-        Only a single notification is sent each time a stall is detected. 
-        If a stall notification was sent previously, new output will cause a notification to 
+        ``timeout`` seconds.
+
+        Only a single notification is sent each time a stall is detected.
+        If a stall notification was sent previously, new output will cause a notification to
         be sent that the stall was resolved.
 
-        Contrary to the :meth:`every` method, this does not wrap the context into a :meth:`when_done`
-        function, thus it may never send a notification. If you want, you can simply use the same 
-        :class:`Notify` to create mutliple contexts:
-        
+        Contrary to the :meth:`every` method, this does not wrap the context into a
+        :meth:`when_done` function, thus it may never send a notification. If you want,
+        you can simply use the same :class:`Notify` to create mutliple contexts:
+
         .. code-block:: python
 
             with notify.when_stalled(timeout), notify.when_done():
@@ -192,13 +287,15 @@ class Notify:
         :param timeout: maximum number of seconds where no new output is produced
             before the code block is considiered to be stalled
         :param capture_output: append all output to ``stdout`` and ``stderr`` to the notification
-        :param caller_frame: the stackframe to use when determining the code block for the notification. 
-            If None, the stackframe of the line that called this function is used
+        :param caller_frame: the stackframe to use when determining the code block for
+            the notification. If None, the stackframe of the line that called this
+            function is used
         """
 
         # if called from user code, the calling frame is unspecified. save it fur future reference
         if caller_frame is None:
-            # we need to go 2 frames up because the direct parent is the contextmanagers ``__enter__`` method`
+            # we need to go 2 frames up because the direct parent is
+            # the contextmanagers ``__enter__`` method`
             caller_frame = inspect.currentframe().f_back.f_back
 
         output_buffer = StringIO()
@@ -251,104 +348,14 @@ class Notify:
         """
         raise NotImplementedError()
 
-    def _get_caller_code_fragment(self, caller_frame, context_size=3):
-        """
-        Create a string representation of the code that called the Notify.
-        The code block returned is selected using the following rules:
-        
-        1. If the calling line is unindented, add a conext of 
-           the surrounding ``context_size`` lines
-        2. If the calling line is in any indentation level > 0, 
-           return all lines above and below that are also indented
-            
-        An indentet line is any line with a leading whitespace.
-
-        Each line in the code block is prefixed with its linenumber within the file and
-        the calling ine is marked with an arrow ('--->')
-
-        :param caller_frame: The stack frame to use for code representation
-        :param context_size: Number of lines of context to add above and below if the calling code is unindented
-
-        Example:
-
-        .. testsetup:: *
-
-            from pytb.notification import Notify
-
-        .. doctest::
-
-            >>> import inspect
-            >>> def test():
-            ...     x = 1 + 1
-            ...     frame = inspect.currentframe()
-            ...     y = 2 + 2
-            ...     return frame
-            >>> frame = test()
-            >>> code_block = Notify("test")._get_caller_code_fragment(frame)
-            >>> print(code_block)
-                 2: def test():
-                 3:     x = 1 + 1
-                 4:     frame = inspect.currentframe()
-            ---> 5:     y = 2 + 2
-                 6:     return frame
-
-        """
-        filename = caller_frame.f_code.co_filename
-        lineno = caller_frame.f_lineno
-        caller_file_lines = linecache.getlines(filename)
-
-        def get_indentation(line):
-            level = 0
-            for char in line:
-                if char in ("\t", " "):
-                    level += 1
-                else:
-                    return level
-            return level
-
-        levels = [get_indentation(line) for line in caller_file_lines]
-
-        # -1 from lineno because line numbers are 1-indexed
-        block_start = block_end = lineno - 1
-
-        # move the start and end line to the block boundaries
-        # (next occurence of unindented line)
-        while block_start > 0 and levels[block_start] > 0:
-            # move up a line
-            block_start -= 1
-
-        while len(levels) < block_end and levels[block_end] > 0:
-            # move down a line
-            block_end += 1
-
-        if block_start == block_end:
-            # add some context, otherwise the caller
-            # would only be a single line
-            block_start = max(0, block_start - context_size)
-            block_end = min(block_end + context_size, len(caller_file_lines))
-
-        code_block_lines = caller_file_lines[block_start : block_end + 1]
-        code_block = ""
-
-        # count the number of characters that are needed to represent
-        # the biggest possible line number
-        space_for_linenos = len(str(len(caller_file_lines)))
-        for block_lineno, line in enumerate(code_block_lines):
-            cur_lineno = block_start + block_lineno + 2
-            prefix = "--->" if cur_lineno == lineno else "    "
-            code_block += f"{prefix} {str(cur_lineno).ljust(space_for_linenos)}: {line}"
-
-        # remove any training whitespaces and newlines
-        return code_block.rstrip()
-
 
 class NotifyViaEmail(Notify):
     """
     A :class:`NotifyViaEmail` object uses an SMTP connection to send notification via emails.
-    The SMTP server is configured either at runtime or via the effective ``.pytb.config`` 
+    The SMTP server is configured either at runtime or via the effective ``.pytb.config``
     files ``notify`` section.
 
-    :param email_addresses: a single email address or a list of addresses. Each entry is a seperate 
+    :param email_addresses: a single email address or a list of addresses. Each entry is a seperate
         recipient of the notification send by this ``Notify``
     :param task: A short description of the monitored block.
     :param sender: Sender name to use. If empty, use this machines FQDN
@@ -356,7 +363,8 @@ class NotifyViaEmail(Notify):
     :param smtp_port: The TCP port of the SMTP server
     :param smtp_ssl: Whether or not to use SSL for the SMTP connection
 
-    All optional parameters are initialized from the effective ``.pytb.config`` if they are passed ``None``
+    All optional parameters are initialized from the effective ``.pytb.config``
+    if they are passed ``None``
     """
 
     message_template = dedent(
@@ -372,11 +380,11 @@ class NotifyViaEmail(Notify):
     """
     )
     """
-    The message template used to create the message content. 
+    The message template used to create the message content.
 
-    You can customize it by overwriting the instance-variable or by 
-    deriving your custom :class:`NotifyViaEmail`. 
-    
+    You can customize it by overwriting the instance-variable or by
+    deriving your custom :class:`NotifyViaEmail`.
+
     The following placeholders are available:
 
     - ``task``
@@ -409,7 +417,7 @@ class NotifyViaEmail(Notify):
 
         notify_config = current_config["notify"]
 
-        if type(email_addresses) is str:
+        if isinstance(email_addresses, str):
             email_addresses = list(email_addresses)
         if email_addresses is None:
             email_addresses = notify_config.getlist("email_addresses")
@@ -429,8 +437,8 @@ class NotifyViaEmail(Notify):
             sender = f"notify@{getfqdn()}"
         self.sender = sender
 
-        if len(email_addresses) == 0:
-            self._logger.warn(
+        if not email_addresses:
+            self._logger.warning(
                 "email_addresses is an empty list, no emails will be sent"
             )
             self.smtp_class = None
@@ -446,7 +454,7 @@ class NotifyViaEmail(Notify):
     def _create_message(
         self, recipient, task, reason, caller_frame, output, exception=None
     ):
-        code_block = self._get_caller_code_fragment(caller_frame)
+        code_block = _get_caller_code_fragment(caller_frame)
         output = "<No output produced>" if not output else output
         exinfo = (
             f"\n\nThe following exception occurred:\n{str(exception)}\n"
@@ -489,27 +497,29 @@ class NotifyViaEmail(Notify):
         )
 
         if self.smtp_class is not None:
+            # pylint: disable=broad-except
             try:
                 with self.smtp_class(self.smtp_host, self.smtp_port) as smtp:
                     for message in messages:
                         self._logger.info(f"sending message to {message['To']}")
                         smtp.send_message(message)
-            except Exception as e:
+            except Exception as current_exception:
                 # we do not want to disrupt the user program if we fail to send the message
-                self._logger.exception(f"error during sending of notification", e)
-                pass
+                self._logger.exception(
+                    f"error during sending of notification", current_exception
+                )
 
 
 class NotifyViaStream(Notify):
     """
     :class:`NotifyViaStream` will write string representations of notifications
     to the specified writable ``stream``. This may be useful when the stream is
-    a UNIX or TCP socket. 
-    
+    a UNIX or TCP socket.
+
     Also useful when when the stream is a ``io.StringIO`` object for testing.
 
     The string representation of the notification can be configured via the
-    :attr:`notification_template` attribute which can be overwritten on a 
+    :attr:`notification_template` attribute which can be overwritten on a
     per-instance basis.
 
     :param task: A short description of the monitored block.
@@ -535,7 +545,7 @@ class NotifyViaStream(Notify):
         self.stream = stream
 
     def _send_notification(self, task, reason, caller_frame, output, exception=None):
-        code_block = self._get_caller_code_fragment(caller_frame)
+        code_block = _get_caller_code_fragment(caller_frame)
         output = "<No output produced>" if not output else output.strip()
         exinfo = f"str(exception)" if exception is not None else ""
 
@@ -551,8 +561,8 @@ class NotifyViaStream(Notify):
 
 
 class Timer(threading.Thread):
-    """
-    A gracefully stoppable Thread with means to run a target function 
+    r"""
+    A gracefully stoppable Thread with means to run a target function
     repedatley every ``X`` seconds.
 
     :param target: the target function that will be executed in the thread
@@ -566,13 +576,13 @@ class Timer(threading.Thread):
         self.kwargs = kwargs
         self.interval = None
         self._stop_event = None
-        return super().__init__()
+        super().__init__()
 
     def stop(self):
         """
         schedule the thread to stop. This is only meant to be used to stop
         a repeated scheduling of the target funtion started via :meth:`call_every`
-        but will not interrupt a long-running target function 
+        but will not interrupt a long-running target function
 
         :raises RuntimeError: if the thread was not started via :meth:`call_every`
         """
@@ -584,14 +594,14 @@ class Timer(threading.Thread):
     def call_every(self, interval):
         """
         start the repeated execution of the target function every ``interval`` seconds.
-        The target function is first invoked after waiting the interval. If the thread 
+        The target function is first invoked after waiting the interval. If the thread
         is stopped before the first interval passed, the target function may never be called
 
         :param interval: ``float``, ``int`` or ``datetime.timedelta`` object representing the
-            number of seconds between invocations of the target function 
+            number of seconds between invocations of the target function
         """
         # make sure the interval is number representing fractional seconds
-        if type(interval) is timedelta:
+        if isinstance(interval, timedelta):
             interval = interval.total_seconds()
 
         self.interval = interval

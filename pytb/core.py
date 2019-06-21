@@ -1,11 +1,17 @@
+"""
+This module capsules functionality that in some way affect multiple
+other modules in the framework
+"""
+
 import sys
 import inspect
 import logging
 
-from .config import current_config
-from .importlib import NoModuleCacheContext, NotebookLoader
-from .rdb import install_hook as install_rdb
+from pytb.config import current_config
+from pytb.importlib import NoModuleCacheContext, NotebookLoader
+from pytb.rdb import install_hook as install_rdb
 
+# pylint: disable=invalid-name
 _initializer_frame = None
 
 
@@ -14,11 +20,12 @@ def init(verbose=True, reinitalisation_attempt_ok=False):
     initialize the toolbox-subsystems using the current configuration
 
     :param verbose: print what this function is setting up
-    :param reinitalisation_attempt_ok: If False, a reinitialization attempt will 
+    :param reinitalisation_attempt_ok: If False, a reinitialization attempt will
         raise a ``RuntimeError`` otherwise a reinitialization attempt is simply ignored.
         If verbose is true, this will also log a warning
     """
-    global _initializer_frame
+
+    global _initializer_frame  # pylint: disable=global-statement
 
     _logger = logging.getLogger(__name__)
     if verbose:
@@ -27,12 +34,14 @@ def init(verbose=True, reinitalisation_attempt_ok=False):
         handler.setLevel(logging.INFO)
         _logger.addHandler(handler)
     if _initializer_frame:
-        reinitialization_message = f"pytb toolkit was already initialized in {_initializer_frame.f_code.co_filename}:{_initializer_frame.f_code.co_name} on line {_initializer_frame.f_lineno}"
+        reinitialization_message = f"pytb toolkit was already initialized in \
+            {_initializer_frame.f_code.co_filename}:{_initializer_frame.f_code.co_name} \
+            on line {_initializer_frame.f_lineno}"
+
         if reinitalisation_attempt_ok:
-            _logger.warn(
+            _logger.warning(
                 f"skipping initialization of toolbox. {reinitialization_message}"
             )
-            return
         else:
             raise RuntimeError(reinitialization_message)
 

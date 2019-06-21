@@ -1,11 +1,11 @@
+"""
+This module handles the .pytb.conf files
+"""
+
 import sys
 import configparser
 import logging
 from pathlib import Path
-
-"""
-This module handles the .pytb.conf files
-"""
 
 
 class Config(configparser.ConfigParser):
@@ -55,11 +55,12 @@ class Config(configparser.ConfigParser):
     @staticmethod
     def get_config_file_locations():
         """
-        Get a list of possible configuration file paths by starting at the 
+        Get a list of possible configuration file paths by starting at the
         current working directory and add all parent paths until the root directory is reached
 
         The default config file location is always the first path in the list.
-        More specific configuration files should appear later in the list (from unspecific to more specific) 
+        More specific configuration files should appear later in the list
+        (from unspecific to more specific)
         """
         # start at the current working directory
         directory = Path.cwd()
@@ -110,7 +111,7 @@ class Config(configparser.ConfigParser):
     def getlist(self, *args, **kwargs):
         """
         get a list of values that are seperated by a newline character
-        
+
         .. testsetup:: *
 
             from pytb.config import Config
@@ -133,7 +134,7 @@ class Config(configparser.ConfigParser):
         return [entry for entry in value.split("\n") if entry]
 
 
-current_config = Config()
+current_config = Config()  # pylint: disable=invalid-name
 """
 An instance of config that is automatically initialized when importing the module
 """

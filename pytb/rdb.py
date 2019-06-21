@@ -1,23 +1,35 @@
+"""
+A remote debugging module for the python debugger pdb
+"""
 import pdb
 import socket
 import sys
 import os
 import selectors
 import fcntl
-import argparse
 import logging
 from contextlib import contextmanager
 
-from .config import current_config as pytb_config
-
-"""
-A remote debugging module for the python debugger pdb
-"""
-
-_logger = logging.getLogger(__name__)
+from pytb.config import current_config as pytb_config
 
 
 class Rdb(pdb.Pdb):
+    """
+
+    :param host: Host interface to bind the remote socket to.
+        If None, the key `bind_to` from the current :class:`pytb.config.Config`s
+        `[rdb]` section is used
+    :param port: Port to listen for incoming connections
+        If None, the key `port` from the current :class:`pytb.config.Config`s
+        `[rdb]` section is used
+    :param patch_stdio: redirect this process' stdin, stdout and stderr to the remote
+        debugging client. If None, the key `patch_stdio` from the current
+        :class:`pytb.config.Config` s `[rdb]` section is used
+    :param **kwargs: passed to the parent Pdb class, except ``stdin`` and
+        ``stdout`` are always overwritten by the remote socket
+    """
+
+    # pylint: disable=protected-access
 
     _std_streams = ["stdin", "stdout", "stderr"]
     """
@@ -26,23 +38,17 @@ class Rdb(pdb.Pdb):
 
     _session = None
     """
-    A global session of the debugger. It is used to keep alive the session between multiple calls to 
+    A global session of the debugger. It is used to keep alive the session between multiple calls to
     set_trace() when the session originally was continued by the user
     """
 
     def __init__(self, host=None, port=None, patch_stdio=None, **kwargs):
-        """
-
-        :param host: Host interface to bind the remote socket to. 
-            If None, the key `bind_to` from the current :class:`pytb.config.Config`s `[rdb]` section is used
-        :param port: Port to listen for incoming connections
-            If None, the key `port` from the current :class:`pytb.config.Config`s `[rdb]` section is used
-        :param patch_stdio: redirect this process' stdin, stdout and stderr to the remote debugging client
-            If None, the key `bind_to` from the current :class:`pytb.config.Config` s `[rdb]` section is used
-        :param **kwargs: passed to the parent Pdb class, except ``stdin`` and ``stdout`` are always overwritten by the remote socket
-        """
 
         Rdb._session = self
+
+        _logger = logging.getLogger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
 
         # load the parameters from the config
         config = pytb_config["rdb"]
@@ -58,9 +64,7 @@ class Rdb(pdb.Pdb):
         )
         listen_socket.listen(1)
         connection, address = listen_socket.accept()
-        _logger.info(
-            f"new connection from {address[0]}:{address[1]}", file=sys.__stderr__
-        )
+        _logger.info(f"new connection from {address[0]}:{address[1]}")
 
         self.connection_file = connection.makefile("rw")
         kwargs["stdin"] = self.connection_file
@@ -80,13 +84,13 @@ class Rdb(pdb.Pdb):
         """
         Flush all currently installed stdio streams forwarded to the socket or not
         """
-        for stream in Rdb._std_streams:
+        for stream in self._std_streams:
             getattr(sys, stream).flush()
 
     def _cleanup(self):
         """
-        Quit from the debugger. The remote connection is closed 
-        and the stdio streams are restored to their original state 
+        Quit from the debugger. The remote connection is closed
+        and the stdio streams are restored to their original state
         """
         self._flush_outputs()
 
@@ -118,32 +122,32 @@ class Rdb(pdb.Pdb):
     do_q = do_exit = do_quit
 
     @contextmanager
-    def _run_mainsafe(self):
+    @staticmethod
+    def _run_mainsafe():
         """
         this contextmanager backs up the ``__main__`` module's ``__dict__``
         before entering the context and makes sure the original state is restored
         before exiting from the context.
 
-        This enables :meth:`_runscript` and :meth:`_runmodule` to be called from 
+        This enables :meth:`_runscript` and :meth:`_runmodule` to be called from
         ``__main__`` which would otherwise not work as those methods clear the original
         ``__dict__``
         """
-        import __main__
 
-        main_backup = __main__.__dict__.copy()
+        main_backup = globals().copy()
         try:
             yield
         finally:
-            __main__.__dict__.clear()
-            __main__.__dict__.update(main_backup)
+            globals().clear()
+            globals().update(main_backup)
 
-    def _runscript(self, *args, **kwargs):
-        with self._run_mainsafe():
-            super()._runscript(*args, **kwargs)
+    def _runscript(self, filename):
+        with Rdb._run_mainsafe():
+            super()._runscript(filename)
 
-    def _runmodule(self, *args, **kwargs):
-        with self._run_mainsafe():
-            super()._runmodule(*args, **kwargs)
+    def _runmodule(self, module_name):
+        with Rdb._run_mainsafe():
+            super()._runmodule(module_name)
 
 
 def set_trace(host=None, port=None, patch_stdio=False):
@@ -154,7 +158,7 @@ def set_trace(host=None, port=None, patch_stdio=False):
 
     :param patch_stdio: When true, redirects stdout, stderr and stdin to the remote socket.
     """
-
+    # pylint: disable=protected-access
     if Rdb._session is None:
         if host is None:
             host = os.environ.get("REMOTE_PDB_HOST", None)
@@ -168,12 +172,13 @@ def set_trace(host=None, port=None, patch_stdio=False):
     Rdb._session.set_trace(frame=sys._getframe().f_back)
 
 
-_previous_breakpoint_hook = None
+_previous_breakpoint_hook = None  # pylint: disable=invalid-name
 
 
 def install_hook():
     """
-    Installs the remote debugger as standard debugging method and calls it when using the builtin `breakpoint()`
+    Installs the remote debugger as standard debugging method and calls
+    it when using the builtin `breakpoint()`
     """
     _previous_breakpoint_hook = sys.breakpointhook
     sys.breakpointhook = set_trace
@@ -181,7 +186,7 @@ def install_hook():
 
 def uninstall_hook():
     """
-    Restore the original state of sys.breakpointhook. 
+    Restore the original state of sys.breakpointhook.
     If :meth:`install_hook` was never called before, this is a noop
     """
     if _previous_breakpoint_hook is not None:
@@ -190,11 +195,14 @@ def uninstall_hook():
 
 class RdbClient:
     """
-    A simple ``netcat`` like socket client that can be used as a convenience 
+    A simple ``netcat`` like socket client that can be used as a convenience
     wrapper to connect to a remote debugger session.
 
-    If  `host` or  `port` are unspecified, they are laoded from the current :class:`pytb.config.Config` s `[rdb]` section
+    If  `host` or  `port` are unspecified, they are laoded from the current
+    :class:`pytb.config.Config` s `[rdb]` section
     """
+
+    # pylint: disable=too-few-public-methods
 
     _selector = selectors.DefaultSelector()
 
@@ -231,7 +239,7 @@ class RdbClient:
         self.stdoutbuf = bytearray()
 
         # loop until the socket is closed and the stdout buffer is empty
-        while not self.socket_closed or len(self.stdoutbuf) > 0:
+        while not self.socket_closed or self.stdoutbuf:
             # wait for I/O
             events = RdbClient._selector.select()
             for key, mask in events:
@@ -241,9 +249,8 @@ class RdbClient:
     def _handle_io(self, stream, mask):
         if stream is self.socket:
             if mask & selectors.EVENT_READ:
-                encoding = sys.stdout.encoding
                 data_read = self.socket.recv(1024)
-                if len(data_read) == 0:
+                if not data_read:
                     self.socket_closed = True
                 self.stdoutbuf += data_read
             elif mask & selectors.EVENT_WRITE:

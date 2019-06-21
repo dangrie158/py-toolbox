@@ -1,17 +1,16 @@
-import sys
-from contextlib import contextmanager
-
 """
     This module contains a set of helpers for common Input/Output related tasks
 """
+import sys
+from contextlib import contextmanager
 
 
 class Tee:
     """
     A N-ended T-piece (manifold) for File objects that supports writing.
-    This is useful if you want to write to multiple files or file-like objects 
+    This is useful if you want to write to multiple files or file-like objects
     (e.g. ``sys.stdout``, ``sys.stderr``) simultaneously.
-    
+
     .. testsetup:: *
 
         from pytb.io import *
@@ -40,13 +39,15 @@ class Tee:
 
         :param text: text to write to the manifold
         """
-        [fd.write(text) for fd in self._fds]
+        for stream in self._fds:
+            stream.write(text)
 
     def flush(self):
         """
         Flush any buffers of all connected file output-streams
         """
-        [fd.flush() for fd in self._fds]
+        for stream in self._fds:
+            stream.flush()
 
     def close(self):
         """
@@ -67,19 +68,21 @@ class Tee:
             >>> sys.stdout.closed
             False
         """
-        [fd.close() for fd in self._fds if fd not in [sys.__stderr__, sys.__stdout__]]
+        for stream in self._fds:
+            if stream not in [sys.__stderr__, sys.__stdout__]:
+                stream.close()
 
 
 @contextmanager
 def _permissive_open(file, *args):
     """
-    Contextmanager that acts like a call to ``open()``  but accepts also 
+    Contextmanager that acts like a call to ``open()``  but accepts also
     a already opened File object. If passed a string, the file is opened
     using a call to ``open()`` passing all additional parameters along.
-    The file is automatically closed using ``File.close()`` after the 
+    The file is automatically closed using ``File.close()`` after the
     context manager exits only if the file was also opened by a call to this function.
 
-    .. doctest:: 
+    .. doctest::
 
         >>> import io, tempfile
         >>> outfile = io.StringIO()
@@ -89,7 +92,7 @@ def _permissive_open(file, *args):
         >>> file.closed
         False
 
-    .. doctest:: 
+    .. doctest::
 
         >>> outfile = tempfile.NamedTemporaryFile('w')
         >>> with _permissive_open(outfile.name, 'w+') as file:
@@ -98,7 +101,7 @@ def _permissive_open(file, *args):
         >>> file.closed
         True
     """
-    if type(file) is str:
+    if isinstance(file, str):
         file_obj = open(file, *args)
     else:
         file_obj = file
@@ -108,7 +111,7 @@ def _permissive_open(file, *args):
     finally:
         # close the file only if we opened it,
         # otherwise leave it open
-        if type(file) is str:
+        if isinstance(file, str):
             file_obj.close()
 
 
@@ -127,14 +130,14 @@ def _redirect_stream(file, module, attr):
 @contextmanager
 def redirected_stdout(file):
     """
-    ContextManager that redirects stdout to a given file-like object 
+    ContextManager that redirects stdout to a given file-like object
     and restores the original state when leaving the context
 
-    :param file: string or file-like object to redirect stdout to. 
-                 If passed a string, the file is opened for writing and closed 
+    :param file: string or file-like object to redirect stdout to.
+                 If passed a string, the file is opened for writing and closed
                  after the contextmanager exits
 
-    .. doctest:: 
+    .. doctest::
 
         >>> import io
         >>> outfile = io.StringIO()
@@ -164,25 +167,25 @@ def redirected_stdstreams(file):
 
     see :meth:`redirected_stdout`
     """
-    with _redirect_stream(file, sys, "stdout") as redirected_stdout:
-        with _redirect_stream(redirected_stdout, sys, "stderr") as redirected_stderr:
-            yield redirected_stderr
+    with _redirect_stream(file, sys, "stdout") as _redirected_stdout:
+        with _redirect_stream(_redirected_stdout, sys, "stderr") as _redirected_stderr:
+            yield _redirected_stderr
 
 
 @contextmanager
 def mirrored_stdout(file):
     """
-    ContextManager that mirrors stdout to a given file-like object 
+    ContextManager that mirrors stdout to a given file-like object
     and restores the original state when leaving the context
 
     This is essentially using a ``Tee`` piece manifold to ``file`` and ``sys.stdout``
-    as a parameter to ``redirected_stdout`` 
+    as a parameter to ``redirected_stdout``
 
-    :param file: string or file-like object to mirror stdout to. 
-                 If passed a string, the file is opened for writing and closed 
+    :param file: string or file-like object to mirror stdout to.
+                 If passed a string, the file is opened for writing and closed
                  after the contextmanager exits
 
-    .. doctest:: 
+    .. doctest::
 
         >>> import io
         >>> outfile = io.StringIO()

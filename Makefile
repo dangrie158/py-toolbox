@@ -13,10 +13,13 @@ $(DOCS_SRC_DIR)/_build/html/%.html: $(DOCS_SRC_DIR)/%.rst
 format:
 	black $(MODULE_NAME)
 
+analyze:
+	$(PYTHON) -m pylint pytb/*.py
+
 docs: format $(DOCS_SRC_DIR)/_build/html/index.html
 	touch $(DOCS_SRC_DIR)/_build/html/.nojekyll
 
-test:
+test: format analyze
 	$(PYTHON) -m unittest pytb/test/test_*.py
 
 clean:
@@ -26,4 +29,7 @@ clean:
 install:
 	$(PYTHON) setup.py install
 
-.PHONY: docs clean test format
+release: clean test docs
+	$(PYTHON) setup.py sdist upload
+
+.PHONY: docs clean test format analyze release

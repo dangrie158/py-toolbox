@@ -1,15 +1,20 @@
+"""
+This module contains useful helper scripts regarding the loading of modules
+"""
+
+# pylint wrongly assumes imports to importlib regard this module
+# instead of the builtin package, thus we need to disable some checks
 import sys
 import os
 import io
-import importlib
 import builtins
 import logging
-from contextlib import AbstractContextManager, contextmanager
-from importlib.abc import MetaPathFinder, Loader
-from importlib.machinery import ModuleSpec
+import importlib  # pylint: disable=import-self
+from importlib.machinery import (  # pylint: disable=no-name-in-module, import-error
+    ModuleSpec,
+)
+from contextlib import AbstractContextManager
 from contextlib import suppress
-
-from .config import current_config as pytb_config
 
 from nbformat import read as read_notebook
 
@@ -17,18 +22,16 @@ with suppress(Exception):
     from IPython import get_ipython
     from IPython.core.interactiveshell import InteractiveShell
 
-"""
-This module contains useful helper scripts regarding the loading of modules
-"""
+from pytb.config import current_config as pytb_config
 
 
 class ModuleLoader(AbstractContextManager):
     """
-    A abstract base class for a general module loader interface 
+    A abstract base class for a general module loader interface
     that can be dynamically installed and uninstalled from the ``sys.meta_path``
 
     Can be used as a context manager to automatically install the loader when entering the context
-    and uninstall 
+    and uninstall
 
     :param verbose: if True, prints attempts to find and load a module
     :param always_reload: if True, prints attempts to find and load a module
@@ -57,14 +60,17 @@ class ModuleLoader(AbstractContextManager):
             self._logger.addHandler(handler)
 
     def find_spec(self, fullname, path, target=None):
+        # pylint: disable=unused-argument,missing-docstring
         # overwrite in child classes to do something sensible
         self._logger.info(f"looking for module {fullname} in path {path}")
 
     def create_module(self, spec):
+        # pylint: disable=unused-argument,missing-docstring,no-self-use
         # return None to indicate default module creation semantics
         return None
 
     def exec_module(self, module):
+        # pylint: disable=missing-docstring
         self._logger.info(f"loading module {module.__name__}")
 
     def __enter__(self):
@@ -103,14 +109,14 @@ class ModuleLoader(AbstractContextManager):
 
         .. doctest::
 
-            >>> loader = ModuleLoader()
-            >>> loader.install()
-            >>> loader.uninstall()
-            >>> assert loader not in sys.meta_path
-            >>> loader.uninstall()
-            Traceback (most recent call last):
-                ...
-            RuntimeError: Tried to uninstall loader that is not installed or was already uninstalled.
+        >>> loader = ModuleLoader()
+        >>> loader.install()
+        >>> loader.uninstall()
+        >>> assert loader not in sys.meta_path
+        >>> loader.uninstall()
+        Traceback (most recent call last):
+            ...
+        RuntimeError: Tried to uninstall loader that is not installed or was already uninstalled.
 
         """
         try:
@@ -141,19 +147,19 @@ class NoModuleCacheContext(AbstractContextManager):
     """
     Contextmanager to temporarly disable module chaching
 
-    While this context is active, every import statement will reevaluate the entire 
+    While this context is active, every import statement will reevaluate the entire
     module and all modules imported by it.
 
-    Excluded from the reloading are all modules in :attr:`sys.builtin_module_names` 
-    and some modules in the stdlib that do not like to be reloaded. The list of unreloadable 
-    modules is defined in :attr:`NoModuleCacheContext._no_reloadable_packages` 
+    Excluded from the reloading are all modules in :attr:`sys.builtin_module_names`
+    and some modules in the stdlib that do not like to be reloaded. The list of unreloadable
+    modules is defined in :attr:`NoModuleCacheContext._no_reloadable_packages`
 
     An instance of this class is available as :attr:`no_module_cache`
 
     :param verbose: Print a list of modules that were reloaded for each import call
 
-    .. doctest::    
-        
+    .. doctest::
+
         >>> from pytb.importlib import NoModuleCacheContext, NotebookLoader
         >>> NotebookLoader().install()
         >>> with NoModuleCacheContext():
@@ -172,6 +178,12 @@ class NoModuleCacheContext(AbstractContextManager):
     )
 
     class CachlessImporter:
+        """
+        Callable wrapper class that handles the calls to ``__import__``
+        in a way that effectively disables the module cache by reloading
+        modules that are already loaded into ```sys.modules```
+        """
+
         def __init__(self, import_fun, verbose, max_depth):
             self.import_fun = import_fun
             self.module_stack = []
@@ -188,10 +200,15 @@ class NoModuleCacheContext(AbstractContextManager):
                 self._logger.addHandler(handler)
 
         def __call__(self, name, globals=None, locals=None, fromlist=(), level=0):
+            # pylint: disable=redefined-builtin,protected-access,too-many-arguments
             if level > 0:
                 # relative import, add the package name to the module name
-                package = importlib._bootstrap._calc___package__(globals)
-                fullname = importlib._bootstrap._resolve_name(name, package, level)
+                package = importlib._bootstrap._calc___package__(  # pylint: disable=no-member
+                    globals
+                )
+                fullname = importlib._bootstrap._resolve_name(  # pylint: disable=no-member
+                    name, package, level
+                )
             else:
                 # absolute import
                 fullname = name
@@ -240,11 +257,11 @@ class NoModuleCacheContext(AbstractContextManager):
                 self.max_depth is None or len(self.module_stack) < self.max_depth
             ):
                 self.reloaded_modules_in_last_call.append(fullname)
-                importlib.reload(sys.modules[fullname])
+                importlib.reload(sys.modules[fullname])  # pylint: disable=no-member
 
         def flush_reload_stack(self):
             """
-            Clear the list of reloaded modules in this call. If this instance is verbose, 
+            Clear the list of reloaded modules in this call. If this instance is verbose,
             print the list of reloaded modules
             """
             self._logger.info(f"reloaded modules {self.reloaded_modules_in_last_call}")
@@ -254,6 +271,9 @@ class NoModuleCacheContext(AbstractContextManager):
         self.is_verbose = verbose
         self._next_context_is_verbose = False
         self.max_depth = max_depth
+
+        self.original_import_fun = None
+        self.custom_import_fun = None
 
     def __enter__(self):
         verbosity = self._next_context_is_verbose or self.is_verbose
@@ -276,6 +296,7 @@ class NoModuleCacheContext(AbstractContextManager):
         return self
 
 
+# pylint: disable=invalid-name
 no_module_cache = NoModuleCacheContext()
 """
 An instance of :class:`NoModuleCacheContext` ready for use
@@ -287,8 +308,8 @@ class NotebookLoader(ModuleLoader):
     A :class:`ModuleLoader` that allows importing of jupyter Notebooks as python modules.
 
     .. doctest::
-    
-        >>> from pytb.importlib import NotebookLoader, no_module_cache 
+
+        >>> from pytb.importlib import NotebookLoader, no_module_cache
         >>> with NotebookLoader(), no_module_cache:
         ...     import pytb.test.fixtures.TestNB
         Hello from Notebook
@@ -301,7 +322,8 @@ class NotebookLoader(ModuleLoader):
             InteractiveShell.instance() if "InteractiveShell" in globals() else None
         )
 
-    def _find_notebook(self, fullname, path):
+    @staticmethod
+    def _find_notebook(fullname, path):
         name = fullname.rsplit(".", 1)[-1]
         if not path:
             path = [""]
@@ -314,13 +336,14 @@ class NotebookLoader(ModuleLoader):
             nb_path = nb_path.replace("_", " ")
             if os.path.isfile(nb_path):
                 return nb_path
+        return None
 
     def find_spec(self, fullname, path, target=None):
         super().find_spec(fullname, path, target)
 
-        nb_path = self._find_notebook(fullname, path)
+        nb_path = NotebookLoader._find_notebook(fullname, path)
         if nb_path is None:
-            return
+            return None
 
         self._logger.info(f"Found notebook file {nb_path}")
 
@@ -329,7 +352,9 @@ class NotebookLoader(ModuleLoader):
     def exec_module(self, module):
         super().exec_module(module)
 
-        with io.open(module.__spec__.origin, "r", encoding="utf-8") as f:
+        with io.open(  # pylint: disable=no-member
+            module.__spec__.origin, "r", encoding="utf-8"
+        ) as f:
             notebook = read_notebook(f, 4)
 
         if self.shell is not None:
@@ -350,6 +375,7 @@ class NotebookLoader(ModuleLoader):
                         code = cell.source
 
                     # run the code in them odule
+                    # pylint: disable=exec-used
                     exec(code, module.__dict__)
         finally:
             if self.shell is not None:
