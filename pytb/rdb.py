@@ -13,6 +13,26 @@ from contextlib import contextmanager
 from pytb.config import current_config as pytb_config
 
 
+@contextmanager
+def _run_mainsafe():
+    """
+    this contextmanager backs up the ``__main__`` module's ``__dict__``
+    before entering the context and makes sure the original state is restored
+    before exiting from the context.
+
+    This enables :meth:`_runscript` and :meth:`_runmodule` to be called from
+    ``__main__`` which would otherwise not work as those methods clear the original
+    ``__dict__``
+    """
+
+    main_backup = globals().copy()
+    try:
+        yield
+    finally:
+        globals().clear()
+        globals().update(main_backup)
+
+
 class Rdb(pdb.Pdb):
     """
 
@@ -121,32 +141,12 @@ class Rdb(pdb.Pdb):
 
     do_q = do_exit = do_quit
 
-    @contextmanager
-    @staticmethod
-    def _run_mainsafe():
-        """
-        this contextmanager backs up the ``__main__`` module's ``__dict__``
-        before entering the context and makes sure the original state is restored
-        before exiting from the context.
-
-        This enables :meth:`_runscript` and :meth:`_runmodule` to be called from
-        ``__main__`` which would otherwise not work as those methods clear the original
-        ``__dict__``
-        """
-
-        main_backup = globals().copy()
-        try:
-            yield
-        finally:
-            globals().clear()
-            globals().update(main_backup)
-
     def _runscript(self, filename):
-        with Rdb._run_mainsafe():
+        with _run_mainsafe():
             super()._runscript(filename)
 
     def _runmodule(self, module_name):
-        with Rdb._run_mainsafe():
+        with _run_mainsafe():
             super()._runmodule(module_name)
 
 
