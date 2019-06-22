@@ -8,13 +8,15 @@ import os
 import selectors
 import fcntl
 import logging
+from typing import Any, Optional, Generator, TextIO, Mapping
+from io import RawIOBase
 from contextlib import contextmanager
 
 from pytb.config import current_config as pytb_config
 
 
 @contextmanager
-def _run_mainsafe():
+def _run_mainsafe() -> Generator[None, None, None]:
     """
     this contextmanager backs up the ``__main__`` module's ``__dict__``
     before entering the context and makes sure the original state is restored
@@ -37,10 +39,10 @@ class Rdb(pdb.Pdb):
     """
 
     :param host: Host interface to bind the remote socket to.
-        If None, the key `bind_to` from the current :class:`pytb.config.Config`s
+        If None, the key `bind_to` from the current :class:`pytb.config.Config` s
         `[rdb]` section is used
     :param port: Port to listen for incoming connections
-        If None, the key `port` from the current :class:`pytb.config.Config`s
+        If None, the key `port` from the current :class:`pytb.config.Config` s
         `[rdb]` section is used
     :param patch_stdio: redirect this process' stdin, stdout and stderr to the remote
         debugging client. If None, the key `patch_stdio` from the current
@@ -62,7 +64,13 @@ class Rdb(pdb.Pdb):
     set_trace() when the session originally was continued by the user
     """
 
-    def __init__(self, host=None, port=None, patch_stdio=None, **kwargs):
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        patch_stdio: Optional[bool] = None,
+        **kwargs: Any,
+    ):
 
         Rdb._session = self
 
@@ -74,7 +82,9 @@ class Rdb(pdb.Pdb):
         config = pytb_config["rdb"]
         host = config.get("bind_to") if host is None else host
         port = int(config.get("port")) if port is None else port
-        patch_stdio = config.get("patch_stdio") if patch_stdio is None else patch_stdio
+        patch_stdio = (
+            config.getboolean("patch_stdio") if patch_stdio is None else patch_stdio
+        )
 
         listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
@@ -93,21 +103,21 @@ class Rdb(pdb.Pdb):
 
         self.stdio_patched = patch_stdio
         if patch_stdio:
-            self.original_streams = {}
+            self.original_streams: Mapping[str, TextIO] = {}
             for stream in Rdb._std_streams:
                 self.original_streams[stream] = getattr(sys, stream)
                 setattr(sys, stream, self.connection_file)
 
         self.prompt = f"RDB@{socket.gethostname()}:{port} >>> "
 
-    def _flush_outputs(self):
+    def _flush_outputs(self) -> None:
         """
         Flush all currently installed stdio streams forwarded to the socket or not
         """
         for stream in self._std_streams:
             getattr(sys, stream).flush()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """
         Quit from the debugger. The remote connection is closed
         and the stdio streams are restored to their original state
@@ -125,32 +135,38 @@ class Rdb(pdb.Pdb):
 
         Rdb._session = None
 
-    def do_continue(self, arg):
+    def do_continue(self, arg: Any) -> Any:
         self._flush_outputs()
-        return super().do_continue(arg)
+        return super().do_continue(arg)  # type: ignore
 
     do_c = do_cont = do_continue
 
-    def do_EOF(self, arg):
+    def do_EOF(self, arg: Any) -> Any:
         self._cleanup()
-        return super().do_EOF(arg)
+        return super().do_EOF(arg)  # type: ignore
 
-    def do_quit(self, arg):
+    def do_quit(self, arg: Any) -> Any:
         self._cleanup()
-        return super().do_quit(arg)
+        return super().do_quit(arg)  # type: ignore
 
     do_q = do_exit = do_quit
 
-    def _runscript(self, filename):
+    def _runscript(self, filename: str) -> None:
         with _run_mainsafe():
-            super()._runscript(filename)
+            super()._runscript(filename)  # type: ignore
 
-    def _runmodule(self, module_name):
+    def _runmodule(self, module_name: str) -> None:
         with _run_mainsafe():
-            super()._runmodule(module_name)
+            super()._runmodule(module_name)  # type: ignore
 
 
-def set_trace(host=None, port=None, patch_stdio=False):
+def set_trace(
+    *args: Any,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    patch_stdio: Optional[bool] = None,
+    **kwargs: Any,
+) -> None:
     """
     Opens a remote PDB on the specified host and port if no session is running.
     If a session is already running (was started previously and a client is still connected)
@@ -163,19 +179,19 @@ def set_trace(host=None, port=None, patch_stdio=False):
         if host is None:
             host = os.environ.get("REMOTE_PDB_HOST", None)
         if port is None:
-            port = os.environ.get("REMOTE_PDB_PORT", None)
-            if port is not None:
-                port = int(port)
+            env_port = os.environ.get("REMOTE_PDB_PORT", None)
+            if env_port is not None:
+                port = int(env_port)
 
         Rdb._session = Rdb(host=host, port=port, patch_stdio=patch_stdio)
 
-    Rdb._session.set_trace(frame=sys._getframe().f_back)
+    Rdb._session.set_trace(*args, **kwargs)
 
 
 _previous_breakpoint_hook = None  # pylint: disable=invalid-name
 
 
-def install_hook():
+def install_hook() -> None:
     """
     Installs the remote debugger as standard debugging method and calls
     it when using the builtin `breakpoint()`
@@ -184,7 +200,7 @@ def install_hook():
     sys.breakpointhook = set_trace
 
 
-def uninstall_hook():
+def uninstall_hook() -> None:
     """
     Restore the original state of sys.breakpointhook.
     If :meth:`install_hook` was never called before, this is a noop
@@ -206,7 +222,7 @@ class RdbClient:
 
     _selector = selectors.DefaultSelector()
 
-    def __init__(self, host=None, port=None):
+    def __init__(self, host: Optional[str] = None, port: Optional[int] = None):
 
         # load the parameters from the config
         config = pytb_config["rdb"]
@@ -219,7 +235,7 @@ class RdbClient:
         self.socket.setblocking(False)
 
         self.stdin = sys.stdin
-        self.stdout = sys.stdout.buffer.raw
+        self.stdout = sys.stdout.buffer.raw  # type: ignore
 
         # make stdin non-blocking to multiplex reading with the socket
         orig_fl = fcntl.fcntl(self.stdin, fcntl.F_GETFL)
@@ -246,7 +262,7 @@ class RdbClient:
                 callback = key.data
                 callback(key.fileobj, mask)
 
-    def _handle_io(self, stream, mask):
+    def _handle_io(self, stream: RawIOBase, mask: int) -> None:
         if stream is self.socket:
             if mask & selectors.EVENT_READ:
                 data_read = self.socket.recv(1024)

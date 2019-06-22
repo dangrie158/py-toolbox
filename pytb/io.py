@@ -2,6 +2,7 @@
     This module contains a set of helpers for common Input/Output related tasks
 """
 import sys
+from typing import Any, TextIO, Union, Generator, cast
 from contextlib import contextmanager
 
 
@@ -20,12 +21,12 @@ class Tee:
         >>> import sys, io
         >>> file_like = io.StringIO()
         >>> combined = Tee(file_like, sys.stdout)
-        >>> combined.write('This is printed into a file and on stdout\\n')
+        >>> _ = combined.write('This is printed into a file and on stdout\\n')
         This is printed into a file and on stdout
         >>> assert file_like.getvalue() == 'This is printed into a file and on stdout\\n'
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args: TextIO):
         """
         Instantiate a new manifold that connects all passed file-like objects' output streams
 
@@ -33,23 +34,26 @@ class Tee:
         """
         self._fds = args
 
-    def write(self, text):
+    def write(self, text: str) -> int:
         """
         Write to the manifold which, in turn, writes to all connected output streams
 
         :param text: text to write to the manifold
+        :return: the number of bytes written to the last stream in the Manifold
         """
         for stream in self._fds:
-            stream.write(text)
+            written = stream.write(text)
 
-    def flush(self):
+        return written
+
+    def flush(self) -> None:
         """
         Flush any buffers of all connected file output-streams
         """
         for stream in self._fds:
             stream.flush()
 
-    def close(self):
+    def close(self) -> None:
         """
         Close all connected files
 
@@ -73,8 +77,13 @@ class Tee:
                 stream.close()
 
 
+AnyTextIOType = Union[str, TextIO, Tee]
+
+
 @contextmanager
-def _permissive_open(file, *args):
+def _permissive_open(
+    file: AnyTextIOType, mode: str = "r"
+) -> Generator[TextIO, None, None]:
     """
     Contextmanager that acts like a call to ``open()``  but accepts also
     a already opened File object. If passed a string, the file is opened
@@ -102,9 +111,9 @@ def _permissive_open(file, *args):
         True
     """
     if isinstance(file, str):
-        file_obj = open(file, *args)
+        file_obj = cast(TextIO, open(file, mode))
     else:
-        file_obj = file
+        file_obj = cast(TextIO, file)
 
     try:
         yield file_obj
@@ -116,7 +125,9 @@ def _permissive_open(file, *args):
 
 
 @contextmanager
-def _redirect_stream(file, module, attr):
+def _redirect_stream(
+    file: AnyTextIOType, module: Any, attr: str
+) -> Generator[TextIO, None, None]:
     with _permissive_open(file, "w") as out:
         old = getattr(module, attr)
         setattr(module, attr, out)
@@ -128,7 +139,7 @@ def _redirect_stream(file, module, attr):
 
 
 @contextmanager
-def redirected_stdout(file):
+def redirected_stdout(file: AnyTextIOType) -> Generator[TextIO, None, None]:
     """
     ContextManager that redirects stdout to a given file-like object
     and restores the original state when leaving the context
@@ -150,7 +161,7 @@ def redirected_stdout(file):
 
 
 @contextmanager
-def redirected_stderr(file):
+def redirected_stderr(file: AnyTextIOType) -> Generator[TextIO, None, None]:
     """
     Same functionality as ``redirect_stdout`` but redirects the stderr stram instead
 
@@ -161,7 +172,7 @@ def redirected_stderr(file):
 
 
 @contextmanager
-def redirected_stdstreams(file):
+def redirected_stdstreams(file: AnyTextIOType) -> Generator[TextIO, None, None]:
     """
     redirects both output streams (``stderr`` and ``stdout``) to ``file``
 
@@ -173,7 +184,7 @@ def redirected_stdstreams(file):
 
 
 @contextmanager
-def mirrored_stdout(file):
+def mirrored_stdout(file: AnyTextIOType) -> Generator[TextIO, None, None]:
     """
     ContextManager that mirrors stdout to a given file-like object
     and restores the original state when leaving the context
@@ -201,7 +212,7 @@ def mirrored_stdout(file):
 
 
 @contextmanager
-def mirrored_stdstreams(file):
+def mirrored_stdstreams(file: AnyTextIOType) -> Generator[TextIO, None, None]:
     """
     Version of :meth:`mirrored_stdout` but mirrors ``stderr`` and ``stdout`` to file
 

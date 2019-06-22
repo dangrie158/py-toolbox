@@ -8,6 +8,8 @@ import logging
 import inspect
 import linecache
 import threading
+from typing import Union, Any, Optional, Generator, ContextManager, Sequence, IO, cast
+from types import FrameType
 from datetime import timedelta
 from socket import getfqdn
 from contextlib import contextmanager, nullcontext
@@ -18,8 +20,11 @@ from textwrap import dedent
 from pytb.config import current_config
 from pytb.io import mirrored_stdstreams
 
+# Union type for a general time interval in (fractional) seconds
+_Interval = Union[int, float, timedelta]
 
-def _get_caller_code_fragment(caller_frame, context_size=3):
+
+def _get_caller_code_fragment(caller_frame: FrameType, context_size: int = 3) -> str:
     """
     Create a string representation of the code that called the Notify.
     The code block returned is selected using the following rules:
@@ -66,7 +71,7 @@ def _get_caller_code_fragment(caller_frame, context_size=3):
     lineno = caller_frame.f_lineno
     caller_file_lines = linecache.getlines(filename)
 
-    def get_indentation(line):
+    def get_indentation(line: str) -> int:
         level = 0
         for char in line:
             if char in ("\t", " "):
@@ -111,6 +116,22 @@ def _get_caller_code_fragment(caller_frame, context_size=3):
     return code_block.rstrip()
 
 
+def _get_caller_frame(level: int) -> Optional[FrameType]:
+    """
+    Get the frame of the calling code of this function
+
+    :param level: The number of frames to pop from the stack before
+        returning the caller
+    """
+    caller_frame = inspect.currentframe()
+    # this function itself adds a frame stack entry we need to go up
+    level += 1
+    while level > 0:
+        level -= 1
+        caller_frame = getattr(caller_frame, "f_back")
+    return caller_frame
+
+
 class Notify:
     """
     A :class:`Notify` object captures the basic configuration of how a
@@ -128,27 +149,32 @@ class Notify:
 
     """
 
-    def __init__(self, task):
+    def __init__(self, task: str):
         self._logger = logging.getLogger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
 
         self.task = task
 
-    def now(self, message):
+    def now(self, message: str) -> None:
         """
         Send a manual notification now. This will use the provided ``message`` as
         the ``reason`` placeholder. No output can be capured using this function.
 
         :param message: A string used to fill the ``{reason}`` placeholder of the notification
         """
-        caller_frame = inspect.currentframe().f_back.f_back
+        caller_frame = _get_caller_frame(1)
         self._send_notification(
             self.task, message, caller_frame, "<output not available>"
         )
 
     @contextmanager
-    def when_done(self, only_if_error=False, capture_output=True, caller_frame=None):
+    def when_done(
+        self,
+        only_if_error: bool = False,
+        capture_output: bool = True,
+        caller_frame: Optional[FrameType] = None,
+    ) -> Generator[None, None, None]:
         """
         Create a context that, when exited, will send notifications.
         If an unhandled exception is raised during execution, a notification
@@ -176,15 +202,16 @@ class Notify:
         if caller_frame is None:
             # we need to go 2 frames up because the direct parent is the
             # contextmanagers ``__enter__`` method`
-            caller_frame = inspect.currentframe().f_back.f_back
+            caller_frame = _get_caller_frame(2)
 
             # only print the debug message when this context is not invoked
             # from another context in this notifier
             self._logger.info(f"Entering when-done Context")
 
         output_buffer = StringIO()
-        output_handler = (
-            mirrored_stdstreams(output_buffer) if capture_output else nullcontext()
+        output_handler = cast(
+            ContextManager[None],
+            mirrored_stdstreams(output_buffer) if capture_output else nullcontext(),
         )
 
         exception = None
@@ -192,7 +219,7 @@ class Notify:
         # pylint: disable=broad-except
         try:
             with output_handler:
-                yield self
+                yield
         except Exception as current_exception:
             exception = current_exception
 
@@ -217,7 +244,12 @@ class Notify:
         self._send_notification(self.task, "done", caller_frame, output)
 
     @contextmanager
-    def every(self, interval, incremental_output=False, caller_frame=None):
+    def every(
+        self,
+        interval: _Interval,
+        incremental_output: bool = False,
+        caller_frame: Optional[FrameType] = None,
+    ) -> Generator[None, None, None]:
         """
         Send out notifications with a fixed interval to receive progress updates.
         This contextmanager wraps a :meth:`when_done`, so it is guaranteed to send
@@ -236,12 +268,12 @@ class Notify:
         if caller_frame is None:
             # we need to go 2 frames up because the direct parent
             # is the contextmanagers ``__enter__`` method`
-            caller_frame = inspect.currentframe().f_back.f_back
+            caller_frame = _get_caller_frame(2)
 
         output_buffer = StringIO()
         output_handler = mirrored_stdstreams(output_buffer)
 
-        def send_progress():
+        def send_progress() -> None:
             self._logger.info("sending out scheduled notifications")
             output = output_buffer.getvalue()
             # clear the output buffer between progress notification
@@ -257,13 +289,18 @@ class Notify:
         try:
             with self.when_done(False, True, caller_frame=caller_frame):
                 with output_handler:
-                    yield self
+                    yield
         finally:
             # stop the scheduled sending of progress updates
             progress_sender.stop()
 
     @contextmanager
-    def when_stalled(self, timeout, capture_output=True, caller_frame=None):
+    def when_stalled(
+        self,
+        timeout: _Interval,
+        capture_output: bool = True,
+        caller_frame: Optional[FrameType] = None,
+    ) -> Generator[None, None, None]:
         """
         Monitor the output of the code bock to determine a possible stall of the execution.
         The execution is considered to be stalled when no new output is produced within
@@ -296,7 +333,7 @@ class Notify:
         if caller_frame is None:
             # we need to go 2 frames up because the direct parent is
             # the contextmanagers ``__enter__`` method`
-            caller_frame = inspect.currentframe().f_back.f_back
+            caller_frame = _get_caller_frame(2)
 
         output_buffer = StringIO()
         output_handler = mirrored_stdstreams(output_buffer)
@@ -304,7 +341,7 @@ class Notify:
         last_output = output_buffer.getvalue()
         was_stalled = False
 
-        def check_stalled():
+        def check_stalled() -> None:
             nonlocal last_output, was_stalled
 
             self._logger.info("Checking for stalled code block")
@@ -336,12 +373,19 @@ class Notify:
         try:
             with self.when_done(True, capture_output, caller_frame=caller_frame):
                 with output_handler:
-                    yield self
+                    yield
         finally:
             # stop the scheduled sending of progress updates
             stall_checker.stop()
 
-    def _send_notification(self, task, reason, caller_frame, output, exception=None):
+    def _send_notification(
+        self,
+        task: str,
+        reason: str,
+        caller_frame: Optional[FrameType],
+        output: str,
+        exception: Optional[Exception] = None,
+    ) -> None:
         """
         Handle the actual notification. Overwrite this method to specify your own Notifier
         over any communication mechanism you may desire.
@@ -406,12 +450,12 @@ class NotifyViaEmail(Notify):
 
     def __init__(
         self,
-        task,
-        email_addresses=None,
-        sender=None,
-        smtp_host=None,
-        smtp_port=None,
-        smtp_ssl=None,
+        task: str,
+        email_addresses: Optional[Sequence[str]] = None,
+        sender: Optional[str] = None,
+        smtp_host: Optional[str] = None,
+        smtp_port: Optional[int] = None,
+        smtp_ssl: Optional[bool] = None,
     ):
         super().__init__(task)
 
@@ -452,9 +496,19 @@ class NotifyViaEmail(Notify):
             self.smtp_port = smtp_port
 
     def _create_message(
-        self, recipient, task, reason, caller_frame, output, exception=None
-    ):
-        code_block = _get_caller_code_fragment(caller_frame)
+        self,
+        recipient: str,
+        task: str,
+        reason: str,
+        caller_frame: Optional[FrameType],
+        output: str,
+        exception: Optional[Exception] = None,
+    ) -> EmailMessage:
+        if caller_frame is not None:
+            code_block = _get_caller_code_fragment(caller_frame)
+        else:
+            code_block = "<caller not available>"
+
         output = "<No output produced>" if not output else output
         exinfo = (
             f"\n\nThe following exception occurred:\n{str(exception)}\n"
@@ -490,7 +544,14 @@ class NotifyViaEmail(Notify):
         msg.set_type("text/plain")
         return msg
 
-    def _send_notification(self, task, reason, caller_frame, output, exception=None):
+    def _send_notification(
+        self,
+        task: str,
+        reason: str,
+        caller_frame: Optional[FrameType],
+        output: str,
+        exception: Optional[Exception] = None,
+    ) -> None:
         messages = (
             self._create_message(address, task, reason, caller_frame, output, exception)
             for address in self.email_addresses
@@ -540,12 +601,23 @@ class NotifyViaStream(Notify):
     - ``output``
     """
 
-    def __init__(self, task, stream):
+    def __init__(self, task: str, stream: IO[Any]):
         super().__init__(task)
         self.stream = stream
 
-    def _send_notification(self, task, reason, caller_frame, output, exception=None):
-        code_block = _get_caller_code_fragment(caller_frame)
+    def _send_notification(
+        self,
+        task: str,
+        reason: str,
+        caller_frame: Optional[FrameType],
+        output: str,
+        exception: Optional[Exception] = None,
+    ) -> None:
+        if caller_frame is not None:
+            code_block = _get_caller_code_fragment(caller_frame)
+        else:
+            code_block = "<caller not available>"
+
         output = "<No output produced>" if not output else output.strip()
         exinfo = f"str(exception)" if exception is not None else ""
 
@@ -570,15 +642,23 @@ class Timer(threading.Thread):
     :param \**kwargs: additional keyword parameters passed to the target function
     """
 
-    def __init__(self, target, *args, **kwargs):
+    def __init__(
+        self,
+        # something goes wrong when declaring the real type of the callable
+        # and running the tests with unittest. so, for now lets use a simple
+        # any type until this is fixed
+        target: Any,  #: Callable[..., Any],
+        *args: Any,
+        **kwargs: Any,
+    ):
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        self.interval = None
-        self._stop_event = None
+        self.interval: float = -1
+        self._stop_event = threading.Event()
         super().__init__()
 
-    def stop(self):
+    def stop(self) -> None:
         """
         schedule the thread to stop. This is only meant to be used to stop
         a repeated scheduling of the target funtion started via :meth:`call_every`
@@ -591,7 +671,7 @@ class Timer(threading.Thread):
 
         self._stop_event.set()
 
-    def call_every(self, interval):
+    def call_every(self, interval: _Interval) -> None:
         """
         start the repeated execution of the target function every ``interval`` seconds.
         The target function is first invoked after waiting the interval. If the thread
@@ -604,13 +684,12 @@ class Timer(threading.Thread):
         if isinstance(interval, timedelta):
             interval = interval.total_seconds()
 
-        self.interval = interval
-        self._stop_event = threading.Event()
+        self.interval = float(interval)
 
         self.start()
 
-    def run(self):
-        if self.interval is None:
+    def run(self) -> None:
+        if self.interval == -1:
             # this thread was not started via the ``call_every()``
             # method, exit after the first execution
             self.target(*self.args, **self.kwargs)
@@ -623,4 +702,5 @@ class Timer(threading.Thread):
                     break
                 self.target(*self.args, **self.kwargs)
 
-            self._stop_event = None
+            self._stop_event.clear()
+            self.interval = -1

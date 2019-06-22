@@ -28,6 +28,3 @@ API Documentation
     :members:
     :show-inheritance:
     :exclude-members: Rdb
-
-    .. autoclass:: pytb.rdb.Rdb
-        :members: _run_mainsafe

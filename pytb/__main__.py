@@ -7,6 +7,7 @@ import sys
 import traceback
 import logging
 import runpy
+from typing import IO, Any
 from types import FrameType
 from contextlib import ExitStack
 from pathlib import Path
@@ -14,10 +15,10 @@ from pdb import Restart as PdbRestart
 
 from pytb.config import current_config
 from pytb.rdb import RdbClient, Rdb
-from pytb.notification import NotifyViaStream, NotifyViaEmail
+from pytb.notification import NotifyViaStream, NotifyViaEmail, Notify
 
 
-def to_stream(stream_name):
+def to_stream(stream_name: str) -> IO[Any]:
     """
     Takes a stream name and turns it into a readable file-like object.
 
@@ -41,7 +42,7 @@ def to_stream(stream_name):
         raise argparse.ArgumentTypeError(f"could not open {stream_name} for writing")
 
 
-def main():
+def main() -> None:
     """
     Main entry point for the CLI. Handles all the argument parsing and
     runs the subcommands.
@@ -234,7 +235,7 @@ def main():
 
             rdb = Rdb(args.host, args.port, args.patch_stdio)
             if args.commands:
-                rdb.rcLines.extend(args.commands)
+                rdb.rcLines.extend(args.commands)  # type: ignore
 
             while True:
                 # pylint: disable=broad-except,protected-access
@@ -243,7 +244,7 @@ def main():
                         rdb._runmodule(str(mainpyfile))
                     else:
                         rdb._runscript(str(mainpyfile))
-                    if rdb._user_requested_quit:
+                    if rdb._user_requested_quit:  # type: ignore
                         break
                     _logger.info("The program finished and will be restarted")
                 except PdbRestart:
@@ -265,7 +266,7 @@ def main():
                     _logger.error("Uncaught exception. Entering post mortem debugging")
                     _logger.error("Running 'cont' or 'step' will restart the program")
                     current_tb = sys.exc_info()[2]
-                    rdb.interaction(None, current_tb)
+                    rdb.interaction(None, current_tb)  # type: ignore
                     _logger.info(
                         f"Post mortem debugger finished. The {mainpyfile} will be restarted"
                     )
@@ -285,7 +286,7 @@ def main():
             )
 
         elif args.notifier == "via-stream":
-            notifier = NotifyViaStream(task=args.script, stream=args.stream)
+            notifier: Notify = NotifyViaStream(task=args.script, stream=args.stream)
 
         elif args.notifier == "via-email":
             if not args.recipients:
@@ -306,7 +307,7 @@ def main():
         # assemble the execution environemnt for the script to run
         script_globals = {"__name__": "__main__"}
         if args.run_as_module:
-            _, mod_spec, code = runpy._get_module_details(  # pylint: disable=protected-access
+            _, mod_spec, code = runpy._get_module_details(  # type: ignore # pylint: disable=protected-access
                 args.script
             )
             script_globals.update(

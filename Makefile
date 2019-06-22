@@ -14,6 +14,7 @@ format:
 	black $(MODULE_NAME)
 
 analyze:
+	$(PYTHON) -m mypy pytb/*.py
 	$(PYTHON) -m pylint pytb/*.py
 
 docs: format $(DOCS_SRC_DIR)/_build/html/index.html

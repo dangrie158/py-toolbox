@@ -5,6 +5,7 @@ This module handles the .pytb.conf files
 import sys
 import configparser
 import logging
+from typing import Mapping, Any, Sequence, List, Optional
 from pathlib import Path
 
 
@@ -17,7 +18,7 @@ class Config(configparser.ConfigParser):
         are actually parsed
     """
 
-    defaults = {
+    _defaults: Mapping[str, Mapping[str, Any]] = {
         "init": {
             "disable_module_cache": False,
             "install_notebook_loader": False,
@@ -53,7 +54,7 @@ class Config(configparser.ConfigParser):
     """
 
     @staticmethod
-    def get_config_file_locations():
+    def get_config_file_locations() -> Sequence[Path]:
         """
         Get a list of possible configuration file paths by starting at the
         current working directory and add all parent paths until the root directory is reached
@@ -64,7 +65,7 @@ class Config(configparser.ConfigParser):
         """
         # start at the current working directory
         directory = Path.cwd()
-        config_paths = []
+        config_paths: List[Path] = []
         while True:
             # potential config file in this directory
             config_file = directory / Config.config_file_name
@@ -82,7 +83,7 @@ class Config(configparser.ConfigParser):
         config_paths.append(Config.default_config_file)
         return list(reversed(config_paths))
 
-    def __init__(self, verbose=False):
+    def __init__(self, verbose: Optional[bool] = False):
         super().__init__()
         self._logger = logging.getLogger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
@@ -95,12 +96,12 @@ class Config(configparser.ConfigParser):
 
         self.reload()
 
-    def reload(self):
+    def reload(self) -> None:
         """
-        load the configuration by initialising the default values from `Config.defaults` and then
+        load the configuration by initialising the default values from `Config._defaults` and then
         traversing all possible configuration files overwriting all newly found values
         """
-        self.read_dict(Config.defaults)
+        self.read_dict(Config._defaults)
 
         potential_config_files = Config.get_config_file_locations()
         self._logger.info(f"looking for config files in {potential_config_files}")
@@ -108,7 +109,7 @@ class Config(configparser.ConfigParser):
         files_loaded = self.read(potential_config_files)
         self._logger.info(f"loaded config from {files_loaded}")
 
-    def getlist(self, *args, **kwargs):
+    def getlist(self, *args: Any, **kwargs: Any) -> Sequence[str]:
         """
         get a list of values that are seperated by a newline character
 

@@ -39,7 +39,7 @@ pluggy==0.12.0
 prompt-toolkit==2.0.9
 ptyprocess==0.6.0
 py==1.8.0
--e git+https://github.com/dangrie158/py-toolbox.git@4ec4be7d3d3094d4a9e6a71f4321c45c3402b82c#egg=py_toolbox
+-e git+https://github.com/dangrie158/py-toolbox.git@75e95f3315084d5895f68458a0e1605dfbcb36e6#egg=py_toolbox
 Pygments==2.4.2
 pylint==2.3.1
 pyparsing==2.4.0

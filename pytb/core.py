@@ -6,7 +6,7 @@ other modules in the framework
 import sys
 import inspect
 import logging
-
+from typing import Optional
 from pytb.config import current_config
 from pytb.importlib import NoModuleCacheContext, NotebookLoader
 from pytb.rdb import install_hook as install_rdb
@@ -15,7 +15,9 @@ from pytb.rdb import install_hook as install_rdb
 _initializer_frame = None
 
 
-def init(verbose=True, reinitalisation_attempt_ok=False):
+def init(
+    verbose: Optional[bool] = True, reinitalisation_attempt_ok: Optional[bool] = False
+) -> None:
     """
     initialize the toolbox-subsystems using the current configuration
 
@@ -66,4 +68,4 @@ def init(verbose=True, reinitalisation_attempt_ok=False):
         _logger.info("'install_rdb_hook' not set, skipping installation of hook")
 
     # store the calling frame to output a useful message when attempting to reinitialize the toolkit
-    _initializer_frame = inspect.currentframe().f_back
+    _initializer_frame = getattr(inspect.currentframe(), "f_back")
