@@ -8,7 +8,17 @@ import logging
 import inspect
 import linecache
 import threading
-from typing import Union, Any, Optional, Generator, ContextManager, Sequence, IO, cast
+from typing import (
+    Union,
+    Any,
+    Optional,
+    Generator,
+    ContextManager,
+    Sequence,
+    IO,
+    TypeVar,
+    cast,
+)
 from types import FrameType
 from datetime import timedelta
 from socket import getfqdn
@@ -22,6 +32,9 @@ from pytb.io import mirrored_stdstreams
 
 # Union type for a general time interval in (fractional) seconds
 _Interval = Union[int, float, timedelta]
+
+# Generic Type Variable to indicate Type of Iterable
+_IterType = TypeVar("_IterType")
 
 
 def _get_caller_code_fragment(caller_frame: FrameType, context_size: int = 3) -> str:
@@ -174,6 +187,7 @@ class Notify:
         only_if_error: bool = False,
         capture_output: bool = True,
         caller_frame: Optional[FrameType] = None,
+        reason_prefix: str = "",
     ) -> Generator[None, None, None]:
         """
         Create a context that, when exited, will send notifications.
@@ -196,6 +210,8 @@ class Notify:
         :param caller_frame: the stackframe to use when determining the code block
             for the notification. If None, the stackframe of the line that called
             this function is used
+        :param reason_prefix: an additional string that is prepended to the ``reason``
+            placeholder when sending a notification. Used to implement :meth:`on_iteration_of`.
         """
 
         # if called from user code, the calling frame is unspecified. save it fur future reference
@@ -237,11 +253,17 @@ class Notify:
 
         if exception is not None:
             self._send_notification(
-                self.task, "failed", caller_frame, output, exception
+                self.task,
+                f"{reason_prefix} failed".lstrip(),
+                caller_frame,
+                output,
+                exception,
             )
             raise exception
 
-        self._send_notification(self.task, "done", caller_frame, output)
+        self._send_notification(
+            self.task, f"{reason_prefix} done".lstrip(), caller_frame, output
+        )
 
     @contextmanager
     def every(
@@ -377,6 +399,47 @@ class Notify:
         finally:
             # stop the scheduled sending of progress updates
             stall_checker.stop()
+
+    def on_iteration_of(
+        self,
+        iterable: Sequence[_IterType],
+        only_if_error: bool = False,
+        capture_output: bool = True,
+        caller_frame: Optional[FrameType] = None,
+    ) -> Generator[_IterType, None, None]:
+        """
+        Send a message *after* each iteration of an iterable. The current iteration
+        and total number of iterations (if the iterable implements :meth:`len`)
+        will be part of the ``reason`` placeholder in the notification.
+
+        .. code-block:: python
+
+            for x in notify.on_iteration_of(range(5)):
+                # execute some potentially long-running process on x
+
+        :param iterable: the iterable which items will be yielded by this generator
+        :param only_if_error: if the context manager exits cleanly, do not send
+            any notifications
+        :param capture_output: capture all output to the ``stdout`` and ``stderr``
+            stream and append it to the notification
+        :param caller_frame: the stackframe to use when determining the code block
+            for the notification. If None, the stackframe of the line that called
+            this function is used
+        """
+
+        if caller_frame is None:
+            caller_frame = _get_caller_frame(1)
+
+        total_iterations = str(len(iterable)) if hasattr(iterable, "__len__") else "???"
+
+        for iteration, item in enumerate(iterable):
+            with self.when_done(
+                capture_output=capture_output,
+                only_if_error=only_if_error,
+                caller_frame=caller_frame,
+                reason_prefix=f"Iteration {iteration + 1}/{total_iterations}",
+            ):
+                yield item
 
     def _send_notification(
         self,

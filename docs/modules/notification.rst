@@ -135,6 +135,25 @@ to inform about the continuation.
     testtask probably stalled
     testtask no longer stalled
 
+Notify after any iteration over an Iterable
+*******************************************
+
+Simply wrap any :class:`Iterable` in :meth:`Notify.on_iteration_of` to get
+notified after each step of the iteration has finished.
+
+.. doctest::
+
+    >>> _ = stream.truncate(0)
+    >>> _ = stream.seek(0)
+    >>> notify.notification_template = "{reason}\n"
+
+    >>> for x in notify.on_iteration_of(range(3)):
+    ...     pass
+    >>> print(stream.getvalue().strip())
+    Iteration 1/3 done
+    Iteration 2/3 done
+    Iteration 3/3 done
+
 *****************
 API Documentation
 *****************
