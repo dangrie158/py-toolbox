@@ -2,6 +2,17 @@
 Changelog
 *********
 
+0.4.6
+*****
+
+- added on_iteration_of method to notification module
+- removed 3.8 and nightly python versions from travis build bacause those
+    versions are broken for pylint
+- added type parameters to all modules and mypy to check types statically
+- fixed error in _run_mainsave contextmanager in RDB module
+- added pylint for static code analysis as build step and refactored code to
+    pass analysis
+
 0.4.5
 *****
 
