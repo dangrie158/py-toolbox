@@ -403,8 +403,8 @@ class Notify:
     def on_iteration_of(
         self,
         iterable: Sequence[_IterType],
-        only_if_error: bool = False,
         capture_output: bool = True,
+        after_every: int = 1,
         caller_frame: Optional[FrameType] = None,
     ) -> Generator[_IterType, None, None]:
         """
@@ -418,10 +418,9 @@ class Notify:
                 # execute some potentially long-running process on x
 
         :param iterable: the iterable which items will be yielded by this generator
-        :param only_if_error: if the context manager exits cleanly, do not send
-            any notifications
         :param capture_output: capture all output to the ``stdout`` and ``stderr``
             stream and append it to the notification
+        :param after_every: Only notify about each N-th iteration
         :param caller_frame: the stackframe to use when determining the code block
             for the notification. If None, the stackframe of the line that called
             this function is used
@@ -433,12 +432,20 @@ class Notify:
         total_iterations = str(len(iterable)) if hasattr(iterable, "__len__") else "???"
 
         for iteration, item in enumerate(iterable):
-            with self.when_done(
-                capture_output=capture_output,
-                only_if_error=only_if_error,
-                caller_frame=caller_frame,
-                reason_prefix=f"Iteration {iteration + 1}/{total_iterations}",
+            iteration_num = iteration + 1
+            notification_context = nullcontext()
+            if (
+                iteration_num % after_every == 0
+                or str(iteration_num) == total_iterations
             ):
+                notification_context = self.when_done(
+                    capture_output=capture_output,
+                    only_if_error=False,
+                    caller_frame=caller_frame,
+                    reason_prefix=f"Iteration {iteration_num}/{total_iterations}",
+                )
+
+            with notification_context:
                 yield item
 
     def _send_notification(
@@ -682,7 +689,7 @@ class NotifyViaStream(Notify):
             code_block = "<caller not available>"
 
         output = "<No output produced>" if not output else output.strip()
-        exinfo = f"str(exception)" if exception is not None else ""
+        exinfo = f"{str(exception)}" if exception is not None else ""
 
         content = self.notification_template.format(
             task=task,

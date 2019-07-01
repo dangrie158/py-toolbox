@@ -83,7 +83,7 @@ is sent and the context exited.
     Exception: ungraceful exit occurred
 
     >>> stream.getvalue()
-    'testtask failed str(exception)'
+    'testtask failed ungraceful exit occurred'
 
 Periodic Notifications on the Progress of long-running Tasks
 ************************************************************
@@ -147,12 +147,34 @@ notified after each step of the iteration has finished.
     >>> _ = stream.seek(0)
     >>> notify.notification_template = "{reason}\n"
 
-    >>> for x in notify.on_iteration_of(range(3)):
+    >>> for x in notify.on_iteration_of(range(5), after_every=2):
     ...     pass
     >>> print(stream.getvalue().strip())
-    Iteration 1/3 done
-    Iteration 2/3 done
-    Iteration 3/3 done
+    Iteration 2/5 done
+    Iteration 4/5 done
+    Iteration 5/5 done
+
+**Note**: Because of `how generators work in python <https://stackoverflow.com/questions/44598548/catch-exception-thrown-in-generator-caller-in-python>`_
+, it is not possible to handle exceptions that are raised in the loop body.
+If you want to get notified about errors that occurred during the loop
+execution, you need to wrap the whole loop into a :meth:`when_done` context
+with the ``only_if_error`` flag set to ``True``.
+
+.. doctest::
+
+    >>> _ = stream.truncate(0)
+    >>> _ = stream.seek(0)
+    >>> notify.notification_template = "{reason}\n"
+
+    >>> for x in notify.on_iteration_of(range(5)):
+    ...     if x == 1:
+    ...         raise Exception("no notification for this :(")
+    Traceback (most recent call last):
+        ...
+    Exception: no notification for this :(
+
+    >>> print(stream.getvalue().strip())
+    Iteration 1/5 done
 
 *****************
 API Documentation
