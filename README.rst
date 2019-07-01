@@ -35,6 +35,7 @@ Quickstart
 - `Load Jupyter Notebooks as Python Modules <https://py-toolbox.readthedocs.io/en/latest/modules/importlib.html#importing-jupyter-notebooks-as-python-modules>`_
 - `Reload modules when importing again (do not cache the result) <https://py-toolbox.readthedocs.io/en/latest/modules/importlib.html#automatically-reload-modules-and-packages-when-importing>`_
 - `Mirroring all output of a script to a file <https://py-toolbox.readthedocs.io/en/latest/modules/io.html#redirecting-output-streams>`_
+- `Flexibly test a number possible configurations of a function <https://py-toolbox.readthedocs.io/en/latest/modules/itertools.html#flexibly-test-a-number-possible-configurations-of-a-function>`_
 - `Automatically configure the framework <https://py-toolbox.readthedocs.io/en/latest/modules/core.html#autoconfigure-toolbox-frameworks>`_
 - `Configure defaults <https://py-toolbox.readthedocs.io/en/latest/modules/config.html#configure-the-toolkit>`_
 
