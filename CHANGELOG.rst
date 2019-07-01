@@ -2,6 +2,12 @@
 Changelog
 *********
 
+0.5.0
+*****
+
+- added ``itertools`` module with ``named_product`` function
+- added ``after_every`` parameter to ``Notify.on_iteration_of``
+
 0.4.6
 *****
 

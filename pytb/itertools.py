@@ -13,7 +13,7 @@ def named_product(
     repeat: int = 1,
     **kwargs: Mapping[Any, Any]
 ) -> Generator[Any, None, None]:
-    """
+    r"""
     .. testsetup:: *
 
         from pytb.itertools import named_product
