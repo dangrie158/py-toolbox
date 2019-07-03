@@ -28,7 +28,7 @@ from io import StringIO  # pylint: disable=no-name-in-module
 from textwrap import dedent
 
 from pytb.config import current_config
-from pytb.io import mirrored_stdstreams
+from pytb.io import mirrored_stdstreams, render_text
 
 # Union type for a general time interval in (fractional) seconds
 _Interval = Union[int, float, timedelta]
@@ -159,15 +159,17 @@ class Notify:
     specify a custom handling of the notifications
 
     :param task: A short description of the monitored block.
-
+    :param render_outputs: If true, prerender the oputputs using :meth:`pytb.io.render_text`
+        This may be useful if the captured codeblock produces progressbars using carriage returns
     """
 
-    def __init__(self, task: str):
+    def __init__(self, task: str, render_outputs: bool = True):
         self._logger = logging.getLogger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
 
         self.task = task
+        self.render_outputs = render_outputs
 
     def now(self, message: str) -> None:
         """
@@ -622,6 +624,10 @@ class NotifyViaEmail(Notify):
         output: str,
         exception: Optional[Exception] = None,
     ) -> None:
+
+        if self.render_outputs:
+            output = render_text(output)
+
         messages = (
             self._create_message(address, task, reason, caller_frame, output, exception)
             for address in self.email_addresses
@@ -689,6 +695,10 @@ class NotifyViaStream(Notify):
             code_block = "<caller not available>"
 
         output = "<No output produced>" if not output else output.strip()
+
+        if self.render_outputs:
+            output = render_text(output)
+
         exinfo = f"{str(exception)}" if exception is not None else ""
 
         content = self.notification_template.format(
