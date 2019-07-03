@@ -2,6 +2,8 @@
     This module contains a set of helpers for common Input/Output related tasks
 """
 import sys
+import textwrap
+from io import StringIO
 from typing import Any, TextIO, Union, Generator, cast
 from contextlib import contextmanager
 
@@ -224,3 +226,48 @@ def mirrored_stdstreams(file: AnyTextIOType) -> Generator[TextIO, None, None]:
             tee_piece_err = Tee(sys.stderr, out)
             with redirected_stderr(tee_piece_err):
                 yield out
+
+
+def render_text(text: str, maxwidth: int = -1) -> str:
+    r"""
+    Attempt to render a text like an (potentiall infinitely wide)
+    terminal would.
+
+    Thus carriage-returns move the cursor to the start of
+    the line, so subsequent characters overwrite the previous.
+
+    .. doctest::
+
+        >>> render_text('asd\rbcd\rcde\r\nqwe\rert\n123', maxwidth=2)
+        'cd\ne \ner\nt \n12\n3'
+
+    :param text: Input text to render
+    :param maxwidth: if > 0, wrap the text to the specified maximum length
+        using the textwrapper library
+    """
+    # create a buffer for the rendered ouput text
+    outtext = StringIO()
+    for char in text:
+        if char == "\r":
+            # seek to one character past the last new line in
+            # the current rednered text. This woks nicely because
+            # rfind will return -1 if no newline is found this
+            # this will seek to the beginning of the stream
+            outtext.seek(outtext.getvalue().rfind("\n") + 1)
+
+            # continue to the next character, dont write he carriage return
+            continue
+        elif char == "\n":
+            # a newline moves the cursor to the end of he buffer
+            # the newline itself is written below
+            outtext.seek(len(outtext.getvalue()))
+
+        # write he current character to the buffer
+        outtext.write(char)
+
+    rendered_text = outtext.getvalue()
+
+    # connditionnally wrap the text after maxwidth characters
+    if maxwidth > 0:
+        rendered_text = textwrap.fill(rendered_text, maxwidth)
+    return rendered_text
