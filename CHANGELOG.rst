@@ -2,6 +2,12 @@
 Changelog
 *********
 
+0.5.1
+*****
+
+- added ``render_outputs`` option to ``Notify``
+- added ``render_text`` function
+
 0.5.0
 *****
 
