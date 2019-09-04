@@ -4,13 +4,15 @@ Methods to work with iterables conveniently.
 """
 
 import itertools
+from copy import deepcopy
 from collections.abc import Iterable
-from typing import Optional, Any, Mapping, Generator
+from typing import Optional, Union, Any, Mapping, Generator, Sequence
 
 
 def named_product(
     values: Optional[Mapping[Any, Any]] = None,
     repeat: int = 1,
+    safe_copy: Union[Sequence[str], bool] = True,
     **kwargs: Mapping[Any, Any]
 ) -> Generator[Any, None, None]:
     r"""
@@ -61,6 +63,11 @@ def named_product(
 
     :param values: a dict of iterables used to create the cartesian product
     :param repeat: repeat iteration of the product N-times
+    :param safe_copy: copy all values before yielding any combination.
+        If passed ``True`` all values are copied.
+        If passed ``False`` no values are copied.
+        If passed an iterable of strings, only the values whose key is in
+        the iterable are copied.
     :param \**kwargs: optional keyword arguments. The dict of
         keyword arguments is merged with the values dict,
         with ``kwargs`` overwriting values in ``values``
@@ -87,8 +94,23 @@ def named_product(
                 for key_inner, val_inner in val_outer.items():
                     subproduct = {key_outer: key_inner, **val_inner}
                     # yield from to exhaust the recursive call to the iterator
-                    yield from named_product(repeat=repeat, **{**kwargs, **subproduct})
+                    yield from named_product(
+                        repeat=repeat, safe_copy=safe_copy, **{**kwargs, **subproduct}
+                    )
     else:
         # non-recursive exit point yields the product of all values
         for combination in itertools.product(*kwargs.values(), repeat=repeat):
-            yield dict(zip(list(kwargs.keys()), combination))
+
+            combined_values = []
+            if isinstance(safe_copy, Iterable):
+                for key, val in zip(list(kwargs.keys()), combination):
+                    if key in safe_copy:
+                        combined_values.append(deepcopy(val))
+                    else:
+                        combined_values.append(val)
+            elif isinstance(safe_copy, bool) and safe_copy:
+                combined_values.append(deepcopy(list(combination)))
+            else:
+                combined_values.append(combination)
+
+            yield dict(zip(list(kwargs.keys()), *combined_values))

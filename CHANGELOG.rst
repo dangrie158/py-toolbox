@@ -2,6 +2,11 @@
 Changelog
 *********
 
+0.6.0
+*****
+
+- added ``safe_copy`` parameter to ``named_product``
+
 0.5.1
 *****
 

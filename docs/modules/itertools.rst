@@ -62,6 +62,17 @@ Note that for ``c='c1'`` only ``b='b1'`` was used. You can also define
 new variables inside each dict that only get used for combinations in
 this branch.
 
+``safe_copy`` of values
+-----------------------
+
+By default, all values are (deep) copied before they are yielded from the
+generator. This is really useful, as otherwise any change you make to an
+object in any combination would change the object for all other combination.
+
+If you have large objects in your combinations however, copying may be
+expensive. In this case you can use the ``safe_copy`` parameter to control
+*if* and *which* objects should be copied before yielding.
+
 *****************
 API Documentation
 *****************
