@@ -5,3 +5,4 @@ pylint
 pytest
 Sphinx
 sphinx-rtd-theme
+nbformat
