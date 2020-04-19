@@ -13,7 +13,7 @@ def named_product(
     values: Optional[Mapping[Any, Any]] = None,
     repeat: int = 1,
     safe_copy: Union[Sequence[str], bool] = True,
-    **kwargs: Mapping[Any, Any]
+    **kwargs: Mapping[str, Any]
 ) -> Generator[Any, None, None]:
     r"""
     .. testsetup:: *
@@ -81,11 +81,8 @@ def named_product(
     for name, entry in kwargs.copy().items():
         # always pack strings as they are iterable,
         # but most likely used as scalars
-        if isinstance(entry, str):
-            kwargs.update({name: (entry,)})
-        elif not isinstance(entry, Iterable):
-            # pack the value into a tuple
-            kwargs.update({name: (entry,)})
+        if isinstance(entry, str) or not isinstance(entry, Iterable):
+            kwargs.update({name: (entry,)})  # type: ignore
 
     if any(isinstance(v, dict) for v in kwargs.values()):
         # recursivley expand all dict elements to the set of values

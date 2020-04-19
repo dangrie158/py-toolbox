@@ -235,7 +235,7 @@ def main() -> None:
 
             rdb = Rdb(args.host, args.port, args.patch_stdio)
             if args.commands:
-                rdb.rcLines.extend(args.commands)  # type: ignore
+                rdb.rcLines.extend(args.commands)
 
             while True:
                 # pylint: disable=broad-except,protected-access
@@ -266,7 +266,7 @@ def main() -> None:
                     _logger.error("Uncaught exception. Entering post mortem debugging")
                     _logger.error("Running 'cont' or 'step' will restart the program")
                     current_tb = sys.exc_info()[2]
-                    rdb.interaction(None, current_tb)  # type: ignore
+                    rdb.interaction(None, current_tb)
                     _logger.info(
                         f"Post mortem debugger finished. The {mainpyfile} will be restarted"
                     )

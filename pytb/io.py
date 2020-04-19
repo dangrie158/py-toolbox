@@ -257,7 +257,7 @@ def render_text(text: str, maxwidth: int = -1) -> str:
 
             # continue to the next character, dont write he carriage return
             continue
-        elif char == "\n":
+        if char == "\n":
             # a newline moves the cursor to the end of he buffer
             # the newline itself is written below
             outtext.seek(len(outtext.getvalue()))

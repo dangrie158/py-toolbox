@@ -8,7 +8,7 @@ import os
 import selectors
 import fcntl
 import logging
-from typing import Any, Optional, Generator, TextIO, Mapping
+from typing import Any, Optional, Iterator, TextIO, Mapping
 from io import RawIOBase
 from contextlib import contextmanager
 
@@ -16,7 +16,7 @@ from pytb.config import current_config as pytb_config
 
 
 @contextmanager
-def _run_mainsafe() -> Generator[None, None, None]:
+def _run_mainsafe() -> Iterator[None]:
     """
     this contextmanager backs up the ``__main__`` module's ``__dict__``
     before entering the context and makes sure the original state is restored
@@ -137,27 +137,27 @@ class Rdb(pdb.Pdb):
 
     def do_continue(self, arg: Any) -> Any:
         self._flush_outputs()
-        return super().do_continue(arg)  # type: ignore
+        return super().do_continue(arg)
 
     do_c = do_cont = do_continue
 
     def do_EOF(self, arg: Any) -> Any:
         self._cleanup()
-        return super().do_EOF(arg)  # type: ignore
+        return super().do_EOF(arg)
 
     def do_quit(self, arg: Any) -> Any:
         self._cleanup()
-        return super().do_quit(arg)  # type: ignore
+        return super().do_quit(arg)
 
     do_q = do_exit = do_quit
 
     def _runscript(self, filename: str) -> None:
         with _run_mainsafe():
-            super()._runscript(filename)  # type: ignore
+            super()._runscript(filename)
 
     def _runmodule(self, module_name: str) -> None:
         with _run_mainsafe():
-            super()._runmodule(module_name)  # type: ignore
+            super()._runmodule(module_name)
 
 
 def set_trace(

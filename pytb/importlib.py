@@ -15,7 +15,7 @@ from typing import (
     Union,
     ContextManager,
     Type,
-    Dict,
+    Mapping,
     Callable,
     List,
 )
@@ -177,10 +177,12 @@ class ModuleLoader(MetaPathFinder, ContextManager["ModuleLoader"], Loader):
 
 
 # A type that represents the type of globals() and locals()
-_GlobalType = Dict[str, Any]
+_GlobalType = Mapping[str, Any]
 
 # Typealias for the __import__ function in builtins
-_ImportFunType = Callable[[str, _GlobalType, _GlobalType, List[str], int], Any]
+_ImportFunType = Callable[
+    [str, Optional[_GlobalType], Optional[_GlobalType], Sequence[str], int], Any
+]
 
 
 class NoModuleCacheContext(ContextManager["NoModuleCacheContext"]):
@@ -243,13 +245,22 @@ class NoModuleCacheContext(ContextManager["NoModuleCacheContext"]):
         def __call__(
             self,
             name: str,
-            globals: _GlobalType = {},  # pylint: disable=redefined-builtin
-            locals: _GlobalType = {},  # pylint: disable=redefined-builtin
-            fromlist: List[str] = [],
+            globals: Optional[_GlobalType] = None,  # pylint: disable=redefined-builtin
+            locals: Optional[_GlobalType] = None,  # pylint: disable=redefined-builtin
+            fromlist: Optional[Sequence[str]] = None,
             level: int = 0,
         ) -> Any:  # pylint: disable=too-many-arguments
             if self.is_verbose:
                 self._logger.setLevel(logging.INFO)
+
+            if globals is None:
+                globals = {}
+
+            if locals is None:
+                locals = {}
+
+            if fromlist is None:
+                fromlist = []
 
             # pylint: disable=protected-access
             if level > 0:
