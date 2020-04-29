@@ -2,6 +2,11 @@
 Changelog
 *********
 
+0.7.0
+*****
+
+- added ``schedule`` module for scheduled task execution
+
 0.6.0
 *****
 

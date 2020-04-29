@@ -31,6 +31,7 @@ Quickstart
 ----------
 
 - `Monitor long running tasks and get notified by email if something goes wrong or the job has finished <https://py-toolbox.readthedocs.io/en/latest/modules/notification.html#setup-monitoring-for-your-long-running-tasks>`_
+- `Schedule task execution <https://py-toolbox.readthedocs.io/en/latest/cli.html#task-scheduler-pytb-schedule>`_
 - `Debug Remotely over a TCP connection <https://py-toolbox.readthedocs.io/en/latest/modules/rdb.html#remote-debugging>`_
 - `Load Jupyter Notebooks as Python Modules <https://py-toolbox.readthedocs.io/en/latest/modules/importlib.html#importing-jupyter-notebooks-as-python-modules>`_
 - `Reload modules when importing again (do not cache the result) <https://py-toolbox.readthedocs.io/en/latest/modules/importlib.html#automatically-reload-modules-and-packages-when-importing>`_

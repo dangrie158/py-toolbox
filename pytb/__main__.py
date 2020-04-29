@@ -7,6 +7,8 @@ import sys
 import traceback
 import logging
 import runpy
+import subprocess
+from datetime import datetime
 from typing import IO, Any
 from types import FrameType
 from contextlib import ExitStack
@@ -16,6 +18,7 @@ from pdb import Restart as PdbRestart
 from pytb.config import current_config
 from pytb.rdb import RdbClient, Rdb
 from pytb.notification import NotifyViaStream, NotifyViaEmail, Notify
+from pytb.schedule import at
 
 
 def to_stream(stream_name: str) -> IO[Any]:
@@ -56,6 +59,26 @@ def main() -> None:
         prog="pytb", description="Python Toolkit CLI Interface"
     )
     subcommands = parser.add_subparsers(help="sub-command", dest="command")
+
+    schedule_parser = subcommands.add_parser(
+        "schedule", help="Schedule tasks to repeat at specific times or intervals."
+    )
+
+    schedule_parser.add_argument(
+        "--at",
+        help="Execute the task each time the cron-like pattern matches",
+        metavar="*",
+        type=str,
+        nargs=5,
+    )
+
+    schedule_parser.add_argument("script", help="script path or module name to run")
+    schedule_parser.add_argument(
+        "args",
+        help="additional parameter passed to the script",
+        nargs=argparse.REMAINDER,
+        metavar="args",
+    )
 
     notify_parser = subcommands.add_parser(
         "notify", help="Statusnotification about long-running tasks."
@@ -273,6 +296,34 @@ def main() -> None:
 
             rdb.do_quit(None)
 
+    elif args.command == "schedule":
+        if args.at is None:
+            schedule_parser.error("You need to specify the scheduler {--at}\n")
+
+        if args.at:
+
+            @at(*args.at)
+            def run_task() -> None:
+                try:
+                    subprocess.run(args.script, *args.args, check=True)
+                except Exception as err:  # pylint: disable=broad-except
+                    _logger.error(err)
+
+        try:
+            run_task.start_schedule()
+        except KeyboardInterrupt as keyint:
+            run_task.stop()
+            raise keyint
+
+        while run_task.is_alive():
+            if not run_task.is_running.is_set():
+                # only print the next schedule if the task is currently not running, otherwiese
+                next_schedule = run_task.next_schedule()
+                wait_time = next_schedule - datetime.now().replace(microsecond=0)
+                if sys.stdout.isatty:
+                    print(f"next run on {next_schedule} (-{wait_time})", end="\r")
+            run_task.is_running.wait(1)
+
     elif args.command == "notify":
         if not args.when_done and args.every is None and args.when_stalled is None:
             notify_parser.error(
@@ -282,7 +333,7 @@ def main() -> None:
 
         if not args.notifier:
             notify_parser.error(
-                "You need to specify the notification system to use (EMail or Stream"
+                "You need to specify the notification system to use (EMail or Stream)"
             )
 
         elif args.notifier == "via-stream":

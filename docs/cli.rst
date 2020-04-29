@@ -5,6 +5,38 @@ Command Line Interface
 The toolkit can be run as an executable (e.g. using the ``-m`` switch
 of the python command or by using the automatically created ``pytb`` command)
 
+********************************
+Task Scheduler ``pytb schedule``
+********************************
+
+Command line interface for the
+:doc:`schedule module <modules/schedule>`.
+
+Currently only the ``--at`` mode is supported using a cron-like syntax.
+
+The cron-like pattern has the following order: min hour day month weekday.
+The following pattern rules are supported:
+
+- ``i`` sequence contains only the element i
+- ``*`` indicates that all values possible for this part are included
+- ``i,j,k`` specifies a list of possible values
+- ``i-j`` specifies a range of values *including* ``j``
+- ``i-j/s`` additionally specifies the step-size
+
+For weekday, the values ``0`` and ``7`` both represent sunday.
+
+.. code-block:: none
+
+    usage: pytb schedule [-h] [--at * * * * *] script ...
+
+    positional arguments:
+    script          script path or module name to run
+    args            additional parameter passed to the script
+
+    optional arguments:
+    -h, --help      show this help message and exit
+    --at * * * * *  Execute the task each time the cron-like pattern matches
+
 **************************************
 Notifications for long running scripts
 **************************************
